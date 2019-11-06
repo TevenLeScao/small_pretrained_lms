@@ -77,36 +77,25 @@ class VocabEntry(object):
 
 
 class Vocab(object):
-    def __init__(self, src, tgt, vocab_size, freq_cutoff):
-        #assert len(src_sents) == len(tgt_sents)
+    def __init__(self, src, vocab_size, freq_cutoff):
 
         print('initialize source vocabulary ..')
         self.src = VocabEntry.from_corpus(src, vocab_size, freq_cutoff)
 
-        if isinstance(tgt, list):
-            print('initialize target vocabulary ..')
-            self.tgt = VocabEntry.from_corpus(tgt, vocab_size, freq_cutoff)
-        else:
-            self.tgt = tgt
-
     def __repr__(self):
-        return 'Vocab(source %d words, target %d words)' % (len(self.src), len(self.tgt))
+        return 'Vocab(%d words)' % (len(self.src))
 
 
 if __name__ == '__main__':
     subwords.main()
 
     sc = paths.get_data_path("train", "src")
-    tg = paths.get_data_path("train", "tgt")
     print('read in source sentences: %s' % sc)
-    print('read in target sentences: %s' % tg)
 
     src_sents = read_corpus(sc, source='src')
-    tgt_sents = read_corpus(tg, source='tgt')
 
-    vocab = Vocab(src_sents, tgt_sents, vconfig.vocab_size, vconfig.freq_cutoff)
-    print('generated vocabulary,  source %d words, target %d words' %
-          (len(vocab.src), len(vocab.tgt)))
+    vocab = Vocab(src_sents, vconfig.vocab_size, vconfig.freq_cutoff)
+    print('generated vocabulary, %d words' % (len(vocab.src)))
 
     pickle.dump(vocab, open(paths.vocab, 'wb'))
     print('vocabulary saved to %s' % paths.vocab)
