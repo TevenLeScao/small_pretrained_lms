@@ -1,0 +1,2 @@
+class VocabConfig:
+    subwords = False
