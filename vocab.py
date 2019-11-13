@@ -87,15 +87,15 @@ class Vocab(object):
 
 
 if __name__ == '__main__':
-    subwords.main()
+    # subwords.main()
 
-    sc = paths.get_data_path("train", "src")
+    sc = paths.get_data_path("train", origin="src")
     print('read in source sentences: %s' % sc)
 
-    src_sents = read_corpus(sc, source='src')
+    src_sents = read_corpus(sc)
 
     vocab = Vocab(src_sents, vconfig.vocab_size, vconfig.freq_cutoff)
     print('generated vocabulary, %d words' % (len(vocab.src)))
 
-    pickle.dump(vocab, open(paths.vocab, 'wb'))
-    print('vocabulary saved to %s' % paths.vocab)
+    pickle.dump(vocab, open(paths.vocab_path, 'wb'))
+    print('vocabulary saved to %s' % paths.vocab_path)

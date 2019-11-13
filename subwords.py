@@ -24,7 +24,7 @@ def train(mode):
         target_folder = paths.data_subwords_folder
         model_type = vconfig.subwords_model_type
         model_prefix = target_folder + model_type + ".en"
-        path = paths.get_data_path(chunk="train", mode="src")
+        path = paths.get_data_path(chunk="train", origin="src")
         train_source_path = path
 
     else:
@@ -32,7 +32,7 @@ def train(mode):
         target_folder = paths.data_subwords_folder
         model_type = vconfig.subwords_model_type
         model_prefix = target_folder + model_type + ".de"
-        path = paths.get_data_path(chunk="train", mode="tgt")
+        path = paths.get_data_path(chunk="train", origin="tgt")
         train_source_path = path
 
     train_model(train_source_path, model_prefix)

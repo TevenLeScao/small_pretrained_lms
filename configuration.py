@@ -1,3 +1,13 @@
+import torch
+
+GPU = torch.cuda.is_available()
+
+
+class TaskConfig:
+    task = "sentiment"
+    dataset = "amazon"
+
+
 class VocabConfig:
     freq_cutoff = 2
     vocab_size = 50000
@@ -8,6 +18,14 @@ class VocabConfig:
     subwords_model_type = "bpe"
     subwords_vocab_size = 8000
     subwords_joint_vocab_size = 37000
+
+
+class ModelConfig:
+    model = "transformer"
+    width = 64
+    d_ff = 128
+    n_head = 8
+    depth = 5
 
 
 class TrainConfig:
