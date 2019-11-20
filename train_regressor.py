@@ -6,10 +6,11 @@ from torch import nn
 
 import paths
 import utils
-from configuration import GPU, ModelConfig as mconfig, TrainConfig as tconfig
+from configuration import GPU, SANITY, ModelConfig as mconfig, TrainConfig as tconfig
 from models.general_model import GeneralModel
 from models.regressor import SentimentTransformer
 from vocab import Vocab, VocabEntry
+from progress_bar import progress_bar
 
 data_vocab = pickle.load(open(paths.vocab_path, 'rb')).src
 
@@ -17,15 +18,22 @@ data_vocab = pickle.load(open(paths.vocab_path, 'rb')).src
 def get_data():
     train_data_src = utils.read_corpus(paths.get_data_path(chunk="train", origin="src"))
     train_data_tgt = np.load(open(paths.get_data_path(chunk="train", origin="tgt"), "rb"))
-    train_data = zip(train_data_src, train_data_tgt)
+    train_data_tgt = (train_data_tgt - 1) / 4
+    train_data = list(zip(train_data_src, train_data_tgt))
     valid_data_src = utils.read_corpus(paths.get_data_path(chunk="valid", origin="src"))
     valid_data_tgt = np.load(open(paths.get_data_path(chunk="valid", origin="tgt"), "rb"))
-    valid_data = zip(valid_data_src, valid_data_tgt)
+    valid_data_tgt = (valid_data_tgt - 1) / 4
+    valid_data = list(zip(valid_data_src, valid_data_tgt))
+    if SANITY:
+        return train_data[:100], valid_data[:100]
     return train_data, valid_data
 
 
 def epoch_loop(model: GeneralModel, data, validation=False):
-    for source, target in utils.batch_iter(data, tconfig.batch_size):
+    epoch_losses = []
+    if validation:
+        model.eval()
+    for batch_num, (source, target) in enumerate(utils.batch_iter(data, tconfig.batch_size)):
         sentences, mask = utils.prepare_sentences(source, data_vocab)
         if GPU:
             target = torch.Tensor(target).cuda()
@@ -34,11 +42,18 @@ def epoch_loop(model: GeneralModel, data, validation=False):
         loss = model.decode_to_loss(sentences, mask, target)
         if not validation:
             model.step(loss)
+        epoch_losses.append(loss.item())
+        progress_bar(batch_num, (len(data) // tconfig.batch_size) + 1,
+                     msg="{:.4f} {} loss    ".format(np.mean(epoch_losses), "validation" if validation else "training"))
+    if validation:
+        model.train()
+    return np.mean(epoch_losses)
 
 
 if __name__ == "__main__":
     train_data, valid_data = get_data()
-    sentiment_transformer = SentimentTransformer(depth=mconfig.depth, width=mconfig.width, d_ff=mconfig.d_ff, n_head=mconfig.n_head)
+    sentiment_transformer = SentimentTransformer(depth=mconfig.depth, width=mconfig.width, d_ff=mconfig.d_ff,
+                                                 n_head=mconfig.n_head)
     if GPU:
         sentiment_transformer = sentiment_transformer.cuda()
     for epoch in range(tconfig.max_epoch):

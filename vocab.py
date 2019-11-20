@@ -70,7 +70,7 @@ class VocabEntry(object):
 
         for word in top_k_words:
             vocab_entry.add(word)
-            if len(vocab_entry) > size:
+            if len(vocab_entry) >= size:
                 break
 
         return vocab_entry
@@ -87,7 +87,7 @@ class Vocab(object):
 
 
 if __name__ == '__main__':
-    # subwords.main()
+    subwords.main()
 
     sc = paths.get_data_path("train", origin="src")
     print('read in source sentences: %s' % sc)

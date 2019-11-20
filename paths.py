@@ -2,7 +2,10 @@ from os import path as osp
 from configuration import TaskConfig as tkconfig
 
 data_folder = osp.join("..", "data")
-vocab_path = "../data/{}/vocab.bin".format(tkconfig.dataset)
+task_folder = osp.join(data_folder, tkconfig.dataset)
+vocab_path = osp.join(task_folder, "vocab.bin")
+subwords_folder = osp.join(task_folder, "subwords")
+subwords_data_path = osp.join(subwords_folder, "train.text.split.subwords.en")
 
 
 def get_data_path(chunk, origin):

@@ -2,6 +2,9 @@ import json
 from typing import List
 import numpy as np
 import math
+import sys
+import time
+from shutil import get_terminal_size
 
 import torch
 
@@ -11,7 +14,7 @@ from configuration import VocabConfig as vconfig, GPU
 
 def read_corpus(file_path, verbose=True):
     if vconfig.subwords:
-        sub = subwords.SubwordReader("src")
+        sub = subwords.SubwordReader()
     print(file_path)
     test = "test" in file_path
     data = []
@@ -54,17 +57,17 @@ def batch_iter(data, batch_size):
     Shuffle not supported for generator objects
     """
 
-    examples = []
-    for i, example in enumerate(data):
-        examples.append(example)
-        if i % batch_size == batch_size - 1:
-            # examples = sorted(examples, key=lambda e: len(e[0]), reverse=True)
-            src = [e[0] for e in examples]
-            tgt = [e[1] for e in examples]
-            yield src, tgt
-            examples = []
-    if len(examples) > 0:
-        # examples = sorted(examples, key=lambda e: len(e[0]), reverse=True)
-        src = [e[0] for e in examples]
-        tgt = [e[1] for e in examples]
-        yield src, tgt
+    assert hasattr(data, '__len__')
+    batch_num = math.ceil(len(data) / batch_size)
+    index_array = list(range(len(data)))
+    np.random.shuffle(index_array)
+
+    for i in range(batch_num):
+        indices = index_array[i * batch_size: (i + 1) * batch_size]
+        examples = [data[idx] for idx in indices]
+
+        examples = sorted(examples, key=lambda e: len(e[0]), reverse=True)
+        src_sents = [e[0] for e in examples]
+        tgt_sents = [e[1] for e in examples]
+
+        yield src_sents, tgt_sents
