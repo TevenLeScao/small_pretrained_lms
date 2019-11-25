@@ -3,27 +3,25 @@ from models.general_model import GeneralModel
 import transformers
 import torch
 from torch import nn, functional
-from configuration import VocabConfig, ModelConfig
+from configuration import VocabConfig as vconfig, ModelConfig as mconfig
 
 sm = torch.nn.Softmax()
-vocabConfig = VocabConfig()
-modelConfig = ModelConfig()
-vocabConfig.max_len_corpus = 512  # Otherwise the pre-trained model is unusable
-assert vocabConfig.vocab_size <= 30522  # uses this many words
+vconfig.max_len_corpus = 512  # Otherwise the pre-trained model is unusable
+assert vconfig.vocab_size <= 30522  # uses this many words
 
 
 class BertBasedClassifier(GeneralModel):
 
     def __init__(self, num_labels):
         super(BertBasedClassifier, self).__init__()
-        self.config = transformers.BertConfig(vocab_size_or_config_json_file=vocabConfig.vocab_size,
-                                              num_hidden_layers=modelConfig.depth,
-                                              num_attention_heads=modelConfig.n_head,
-                                              max_position_embeddings=vocabConfig.max_len_corpus,
+        self.config = transformers.BertConfig(vocab_size_or_config_json_file=vconfig.vocab_size,
+                                              num_hidden_layers=mconfig.depth,
+                                              num_attention_heads=mconfig.n_head,
+                                              max_position_embeddings=vconfig.max_len_corpus,
                                               num_labels=num_labels
                                               )
+        # self.model = transformers.BertForSequenceClassification.from_pretrained('bert-base-uncased', config=self.config)
         self.error = nn.CrossEntropyLoss()
-        self.model = transformers.BertForSequenceClassification.from_pretrained('bert-base-uncased', config=self.config)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
 
     def forward(self, sentences, sent_mask):

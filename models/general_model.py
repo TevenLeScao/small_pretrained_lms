@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 
-import utils
 from configuration import TrainConfig as tconfig
 
 
@@ -10,7 +9,7 @@ class GeneralModel(nn.Module):
     def __init__(self):
         super(GeneralModel, self).__init__()
         self.encoder = None
-        self.decoder = None
+        self.regressor = None
         self.optimizer = None
         self.num_accumulations = 0
         # accumulate must be > 0
@@ -36,7 +35,7 @@ class GeneralModel(nn.Module):
     def initialize(self):
         for param in self.encoder.parameters():
             torch.nn.init.xavier_normal_(param)
-        for param in self.decoder.parameters():
+        for param in self.regressor.parameters():
             torch.nn.init.xavier_normal_(param)
 
     def load_params(self, model_path, opt=True):

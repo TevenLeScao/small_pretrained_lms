@@ -4,11 +4,6 @@ SANITY = False
 GPU = torch.cuda.is_available() and not SANITY
 
 
-class TaskConfig:
-    task = "sentiment"
-    dataset = "amazon"
-
-
 class VocabConfig:
     freq_cutoff = 2
     vocab_size = 50000

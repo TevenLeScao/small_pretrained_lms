@@ -4,34 +4,12 @@ import numpy as np
 import math
 import sys
 import time
-from shutil import get_terminal_size
+import os
+import errno
 
 import torch
 
-import subwords
-from configuration import VocabConfig as vconfig, GPU
-
-
-def read_corpus(file_path, verbose=True):
-    if vconfig.subwords:
-        sub = subwords.SubwordReader()
-    print(file_path)
-    test = "test" in file_path
-    data = []
-    counter = 0
-    for line in open(file_path):
-        if vconfig.subwords:
-            sent = sub.line_to_subwords(line)
-        else:
-            sent = line.strip().split(' ')
-        if len(sent) <= vconfig.max_len_corpus or test:
-            data.append(sent)
-        else:
-            counter += 1
-    if verbose:
-        print("Eliminated :", counter, "out of", len(data))
-        print(len(data))
-    return data
+from configuration import GPU
 
 
 def prepare_sentences(sentences: List[List[str]], vocab):
@@ -71,3 +49,13 @@ def batch_iter(data, batch_size):
         tgt_sents = [e[1] for e in examples]
 
         yield src_sents, tgt_sents
+
+
+def makedirs(name):
+    try:
+        os.makedirs(name)
+    except OSError as ex:
+        if ex.errno == errno.EEXIST and os.path.isdir(name):
+            pass
+        else:
+            raise

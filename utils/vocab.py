@@ -4,16 +4,13 @@ from collections import Counter
 from itertools import chain
 import pickle
 
-from utils import read_corpus
-
 import configuration
-import paths
-import subwords
+from utils import subwords
 
 vconfig = configuration.VocabConfig()
 
 
-class VocabEntry(object):
+class Vocab(object):
     def __init__(self):
         self.word2id = dict()
         self.unk_id = 3
@@ -58,7 +55,7 @@ class VocabEntry(object):
 
     @staticmethod
     def from_corpus(corpus, size, freq_cutoff=2):
-        vocab_entry = VocabEntry()
+        vocab_entry = Vocab()
 
         word_freq = Counter(chain(*corpus))
 
@@ -74,28 +71,3 @@ class VocabEntry(object):
                 break
 
         return vocab_entry
-
-
-class Vocab(object):
-    def __init__(self, src, vocab_size, freq_cutoff):
-
-        print('initialize source vocabulary ..')
-        self.src = VocabEntry.from_corpus(src, vocab_size, freq_cutoff)
-
-    def __repr__(self):
-        return 'Vocab(%d words)' % (len(self.src))
-
-
-if __name__ == '__main__':
-    subwords.main()
-
-    sc = paths.get_data_path("train", origin="src")
-    print('read in source sentences: %s' % sc)
-
-    src_sents = read_corpus(sc)
-
-    vocab = Vocab(src_sents, vconfig.vocab_size, vconfig.freq_cutoff)
-    print('generated vocabulary, %d words' % (len(vocab.src)))
-
-    pickle.dump(vocab, open(paths.vocab_path, 'wb'))
-    print('vocabulary saved to %s' % paths.vocab_path)
