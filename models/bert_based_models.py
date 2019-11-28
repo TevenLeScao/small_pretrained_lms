@@ -20,6 +20,7 @@ class TransformerWordEmbedder(WordEmbedder):
         super(TransformerWordEmbedder, self).__init__()
         self.config = BertConfig(vocab_size, width, depth, n_head, d_ff)
         self.bert = BertModel(self.config)
+        self.embedder = self.bert
         self.optimizer = torch.optim.Adam(self.parameters(), lr=tconfig.lr, weight_decay=tconfig.weight_decay)
 
     def forward(self, sentences, sent_mask):

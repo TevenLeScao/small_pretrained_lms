@@ -8,9 +8,13 @@ class SentenceEncoder(GeneralModel):
         super(SentenceEncoder, self).__init__()
         self.word_dim = word_dim
         self.sentence_dim = sentence_dim
+        self.projection = None
 
     def forward(self, embedded_words: torch.Tensor, sent_mask: torch.Tensor) -> torch.Tensor:
         pass
+
+    def main_module(self):
+        return self.projection
 
 
 class BOREP(SentenceEncoder):

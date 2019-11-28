@@ -35,6 +35,9 @@ class SentimentTransformer(GeneralModel):
             if param.dim() > 1:
                 nn.init.xavier_uniform(param)
 
+    def main_module(self):
+        return nn.ModuleList(self.encoder, self.regressor)
+
 
 class BasicRegressor(nn.Module):
 

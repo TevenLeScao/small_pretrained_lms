@@ -1,4 +1,3 @@
-import utils.helpers
 from senteval.binary import CREval, MREval, MPQAEval, SUBJEval
 from senteval.snli import SNLI
 from senteval.trec import TRECEval
@@ -9,14 +8,16 @@ from senteval.sst import SSTEval
 from senteval.rank import ImageCaptionRetrievalEval
 from senteval.probing import *
 
+from utils.helpers import dotdict, makedirs
 from models.structure import *
 from models.sentence_encoders import SentenceEncoder
+from configuration import Paths
 
 
 class TrainEngine(object):
     def __init__(self, params, word_embedder: WordEmbedder, sentence_encoder: SentenceEncoder, prepare=None):
         # parameters
-        params = utils.helpers.dotdict(params)
+        params = dotdict(params)
         params.usepytorch = True if 'usepytorch' not in params else params.usepytorch
         params.seed = 1111 if 'seed' not in params else params.seed
 
@@ -128,6 +129,9 @@ class TrainEngine(object):
         #     self.trainer = CoordinationInversionEval(self.params.task_path, seed=self.params.seed)
 
         self.params.current_task = name
+        self.params.current_xp_folder = os.path.join(Paths.experiment_path, name)
+        makedirs(self.params.current_xp_folder)
+
         self.trainer.do_train_prepare(self.params, self.prepare)
 
         self.results = self.trainer.train(self.params, self.word_embedder, self.sentence_encoder)

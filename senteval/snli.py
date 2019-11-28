@@ -12,6 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 import codecs
 import os
+import os.path as osp
 import io
 import copy
 import logging
@@ -24,18 +25,18 @@ from senteval.tools.validation import SplitClassifier
 
 from models.sentence_encoders import SentenceEncoder
 from models.structure import WordEmbedder, StandardMLP
-from utils.helpers import prepare_sentences, batch_iter, word_lists_to_lines
+from utils.helpers import prepare_sentences, batch_iter, word_lists_to_lines, makedirs
 from utils.progress_bar import progress_bar
-from configuration import GPU, TrainConfig as tconfig
+from configuration import SANITY, GPU, TrainConfig as tconfig
 
 
 class SNLI(object):
     def __init__(self, taskpath, seed=1111):
         logging.debug('***** Transfer task : SNLI Entailment*****\n\n')
         self.seed = seed
+
         train1 = self.loadFile(os.path.join(taskpath, 's1.train'))
         train2 = self.loadFile(os.path.join(taskpath, 's2.train'))
-
         trainlabels = io.open(os.path.join(taskpath, 'labels.train'),
                               encoding='utf-8').read().splitlines()
 
@@ -52,14 +53,20 @@ class SNLI(object):
         # sort data (by s2 first) to reduce padding
         sorted_train = sorted(zip(train2, train1, trainlabels),
                               key=lambda z: (len(z[0]), len(z[1]), z[2]))
-        train2, train1, trainlabels = map(list, zip(*sorted_train))
 
         sorted_valid = sorted(zip(valid2, valid1, validlabels),
                               key=lambda z: (len(z[0]), len(z[1]), z[2]))
-        valid2, valid1, validlabels = map(list, zip(*sorted_valid))
 
         sorted_test = sorted(zip(test2, test1, testlabels),
                              key=lambda z: (len(z[0]), len(z[1]), z[2]))
+
+        if SANITY:
+            sorted_train = sorted_train[0:100]
+            sorted_valid = sorted_valid[0:100]
+            sorted_test = sorted_test[0:100]
+
+        train2, train1, trainlabels = map(list, zip(*sorted_train))
+        valid2, valid1, validlabels = map(list, zip(*sorted_valid))
         test2, test1, testlabels = map(list, zip(*sorted_test))
 
         self.training_samples = train1 + train2
@@ -123,7 +130,7 @@ class SNLI(object):
         classifier = StandardMLP(params, sentence_encoder.sentence_dim * 4, self.n_classes)
         if GPU:
             classifier = classifier.cuda()
-        models = word_embedder, sentence_encoder, classifier
+        models = {"embedder": word_embedder, "encoder": sentence_encoder, "classifier": classifier}
 
         sub_reader = params.get("reader")
         if sub_reader is not None:
@@ -138,18 +145,18 @@ class SNLI(object):
 
 
         for epoch in range(tconfig.max_epoch):
-            train_loss = self.epoch_loop(self.data['train'], models, params, validation=False)
-            valid_loss = self.epoch_loop(self.data['valid'], models, params, validation=True)
+            train_loss = self.epoch_loop(self.data['train'], models.values(), params, validation=False)
+            valid_loss = self.epoch_loop(self.data['valid'], models.values(), params, validation=True)
             if valid_loss < best_valid:
                 best_valid = valid_loss
-                models[0].save("embedder")
-                models[1].save("encoder")
-                models[2].save("classifier")
+                for key, model in models.items():
+                    model.save(osp.join(params.current_xp_folder, key))
             else:
                 print("updating LR")
-                for model in models:
-                    for param_group in model.optimizer.param_groups:
-                        param_group['lr'] /= 2
+                for key, model in models.items():
+                    model.load_params(osp.join(params.current_xp_folder, key))
+                    model.update_learning_rate(0.7)
+
 
     def run(self, params, batcher):
         self.X, self.y = {}, {}

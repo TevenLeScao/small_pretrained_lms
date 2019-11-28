@@ -5,17 +5,11 @@ import logging
 from os import path as osp
 import pickle
 
-from configuration import GPU, VocabConfig as vconfig
+from configuration import GPU, VocabConfig as vconfig, Paths
 from utils.helpers import word_lists_to_lines, create_vocabulary, create_subwords
 from models.sentence_encoders import *
 from models.bert_based_models import *
 
-# Set PATHs
-PATH_TO_SENTEVAL = '../'
-PATH_TO_DATA = '../data/senteval'
-
-# import SentEval
-sys.path.insert(0, PATH_TO_SENTEVAL)
 import senteval
 
 
@@ -41,7 +35,7 @@ def batcher(params, batch):
 
 
 # Set params for SentEval
-params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 5}
+params_senteval = {'task_path': Paths.senteval_data_path, 'usepytorch': True, 'kfold': 5}
 params_senteval['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
                                  'tenacity': 3, 'epoch_size': 2}
 
@@ -50,6 +44,7 @@ logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
 if __name__ == "__main__":
     word_embedder = TransformerWordEmbedder()
+    print(word_embedder)
     sentence_embedder = RandomLSTM()
     if GPU:
         word_embedder = word_embedder.cuda()

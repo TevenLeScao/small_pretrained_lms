@@ -1,7 +1,16 @@
+import os.path as osp
 import torch
 
 SANITY = False
 GPU = torch.cuda.is_available() and not SANITY
+
+class Paths:
+    code_path = osp.dirname(osp.realpath(__file__))
+    project_path = osp.join(code_path, "..")
+    data_path = osp.join(project_path, "data")
+    senteval_data_path = osp.join(data_path, "senteval")
+    experiment_path = osp.join(project_path, "experiments")
+    results_path = osp.join(project_path, "results")
 
 
 class VocabConfig:

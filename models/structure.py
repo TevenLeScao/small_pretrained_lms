@@ -2,6 +2,7 @@ from typing import List
 
 import torch
 from torch import nn
+from torch.nn.parallel.distributed import DistributedDataParallel
 
 from utils.helpers import get_optimizer
 
@@ -43,15 +44,47 @@ class GeneralModel(nn.Module):
             opt_path = path + ".opt.pt"
             torch.save(self.optimizer.state_dict(), opt_path)
 
+    def get_current_learning_rate(self):
+        # return self.schedulers[0].get_lr()[0]
+        return self.optimizer.param_groups[0]['lr']
+
+    def update_learning_rate(self, lr_decay):
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] *= lr_decay
+
+    def main_module(self):
+        pass
+
+    def get_network_description(self, network):
+        '''Get the string and total parameters of the network'''
+        if isinstance(network, nn.DataParallel) or isinstance(network, DistributedDataParallel):
+            network = network.module
+        s = str(network)
+        n = sum(map(lambda x: x.numel(), network.parameters()))
+        return s, n
+
+    def __str__(self):
+        s, n = self.get_network_description(self.main_module())
+        if isinstance(self.main_module(), nn.DataParallel) or isinstance(self.main_module(), DistributedDataParallel):
+            net_struc_str = '{} - {}'.format(self.main_module().__class__.__name__,
+                                             self.main_module().module.__class__.__name__)
+        else:
+            net_struc_str = '{}'.format(self.main_module().__class__.__name__)
+        return 'Network structure: {}, with parameters: {:,d}\n{}'.format(net_struc_str, n, s)
+
 
 class WordEmbedder(GeneralModel):
 
     def __init__(self):
         super(WordEmbedder, self).__init__()
         self.vocab_size = vconfig.subwords_vocab_size if vconfig else vconfig.vocab_size
+        self.embedder = None
 
     def forward(self, one_hot_sentences: torch.Tensor, sent_mask: torch.Tensor) -> torch.Tensor:
         pass
+
+    def main_module(self):
+        return self.embedder
 
 
 def standard_mlp(params, inputdim, nclasses):
@@ -85,3 +118,6 @@ class StandardMLP(GeneralModel):
 
     def decode_to_loss(self, inp, target):
         return self.loss_fn(self(inp), target)
+
+    def main_module(self):
+        return self.mlp
