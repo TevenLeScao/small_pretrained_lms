@@ -26,10 +26,10 @@ class ModelConfig:
         sentence_width = 16
     else:
         model = "transformer"
-        depth = 3
+        depth = 6
         width = 256
-        d_ff = 256
-        n_head = 8
+        d_ff = 512
+        n_head = 16
         sentence_width = 1024
 
 
@@ -37,7 +37,7 @@ class ModelConfig:
 class TrainConfig:
     lr = 0.001
     weight_decay = 0.00001
-    batch_size = 16
+    batch_size = 64
     clip_grad = 5.0
     lr_decay = 0.2
     max_epoch = 100

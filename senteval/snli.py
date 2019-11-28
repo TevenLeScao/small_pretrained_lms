@@ -1,0 +1,196 @@
+# Copyright (c) 2017-present, Facebook, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
+#
+
+'''
+SNLI - Entailment
+'''
+from __future__ import absolute_import, division, unicode_literals
+
+import codecs
+import os
+import io
+import copy
+import logging
+import numpy as np
+from contextlib import nullcontext
+
+import torch
+
+from senteval.tools.validation import SplitClassifier
+
+from models.sentence_encoders import SentenceEncoder
+from models.structure import WordEmbedder, StandardMLP
+from utils.helpers import prepare_sentences, batch_iter, word_lists_to_lines
+from utils.progress_bar import progress_bar
+from configuration import GPU, TrainConfig as tconfig
+
+
+class SNLI(object):
+    def __init__(self, taskpath, seed=1111):
+        logging.debug('***** Transfer task : SNLI Entailment*****\n\n')
+        self.seed = seed
+        train1 = self.loadFile(os.path.join(taskpath, 's1.train'))
+        train2 = self.loadFile(os.path.join(taskpath, 's2.train'))
+
+        trainlabels = io.open(os.path.join(taskpath, 'labels.train'),
+                              encoding='utf-8').read().splitlines()
+
+        valid1 = self.loadFile(os.path.join(taskpath, 's1.dev'))
+        valid2 = self.loadFile(os.path.join(taskpath, 's2.dev'))
+        validlabels = io.open(os.path.join(taskpath, 'labels.dev'),
+                              encoding='utf-8').read().splitlines()
+
+        test1 = self.loadFile(os.path.join(taskpath, 's1.test'))
+        test2 = self.loadFile(os.path.join(taskpath, 's2.test'))
+        testlabels = io.open(os.path.join(taskpath, 'labels.test'),
+                             encoding='utf-8').read().splitlines()
+
+        # sort data (by s2 first) to reduce padding
+        sorted_train = sorted(zip(train2, train1, trainlabels),
+                              key=lambda z: (len(z[0]), len(z[1]), z[2]))
+        train2, train1, trainlabels = map(list, zip(*sorted_train))
+
+        sorted_valid = sorted(zip(valid2, valid1, validlabels),
+                              key=lambda z: (len(z[0]), len(z[1]), z[2]))
+        valid2, valid1, validlabels = map(list, zip(*sorted_valid))
+
+        sorted_test = sorted(zip(test2, test1, testlabels),
+                             key=lambda z: (len(z[0]), len(z[1]), z[2]))
+        test2, test1, testlabels = map(list, zip(*sorted_test))
+
+        self.training_samples = train1 + train2
+        self.samples = train1 + train2 + valid1 + valid2 + test1 + test2
+        self.data = {'train': (train1, train2, trainlabels),
+                     'valid': (valid1, valid2, validlabels),
+                     'test': (test1, test2, testlabels)
+                     }
+        self.n_classes = 3
+
+        self.dico_label = {'entailment': 0, 'neutral': 1, 'contradiction': 2}
+
+    def do_prepare(self, params, prepare):
+        return prepare(params, self.samples)
+
+    def do_train_prepare(self, params, prepare):
+        return prepare(params, self.training_samples)
+
+    def loadFile(self, fpath):
+        with codecs.open(fpath, 'rb', 'latin-1') as f:
+            return [line.split() for line in
+                    f.read().splitlines()]
+
+    def epoch_loop(self, data, models, params, validation=False):
+        epoch_losses = []
+        if validation:
+            for model in models:
+                model.eval()
+            context = torch.no_grad()
+        else:
+            context = nullcontext()
+        word_embedder, sentence_encoder, classifier = models
+        with context:
+            for batch_num, (sents1, sents2, labels) in enumerate(batch_iter(list(zip(*data)), tconfig.batch_size)):
+                sents1, mask1 = prepare_sentences(sents1, params.vocab)
+                sents2, mask2 = prepare_sentences(sents2, params.vocab)
+                if GPU:
+                    labels = torch.LongTensor(labels).cuda()
+                else:
+                    labels = torch.LongTensor(labels)
+                enc1, enc2 = sentence_encoder(word_embedder(sents1, mask1), mask1), \
+                                  sentence_encoder(word_embedder(sents2, mask2), mask2)
+                classifier_input = torch.cat((enc1, enc2, enc1 * enc2, (enc1 - enc2).abs()), dim=1)
+                loss = classifier.decode_to_loss(classifier_input, labels)
+                if not validation:
+                    loss = loss / tconfig.accumulate
+                    loss.backward()
+                    for model in models:
+                        model.step()
+                epoch_losses.append(loss.item())
+                progress_bar(batch_num, (len(data[0]) // tconfig.batch_size) + 1,
+                             msg="{:.4f} {} loss    ".format(np.mean(epoch_losses),
+                                                             "validation" if validation else "training"))
+        if validation:
+            for model in models:
+                model.train()
+        return np.mean(epoch_losses)
+
+    def train(self, params, word_embedder: WordEmbedder, sentence_encoder: SentenceEncoder):
+        best_valid = 1e10
+        classifier = StandardMLP(params, sentence_encoder.sentence_dim * 4, self.n_classes)
+        if GPU:
+            classifier = classifier.cuda()
+        models = word_embedder, sentence_encoder, classifier
+
+        sub_reader = params.get("reader")
+        if sub_reader is not None:
+            self.data['train'] = (list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data['train'][0]))),
+                                  list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data['train'][1]))),
+                                  [self.dico_label[value] for value in self.data['train'][2]])
+            print(len(self.data['train'][0]))
+            self.data['valid'] = (list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data['valid'][0]))),
+                                  list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data['valid'][1]))),
+                                  [self.dico_label[value] for value in self.data['valid'][2]])
+            print(len(self.data['valid'][0]))
+
+
+        for epoch in range(tconfig.max_epoch):
+            train_loss = self.epoch_loop(self.data['train'], models, params, validation=False)
+            valid_loss = self.epoch_loop(self.data['valid'], models, params, validation=True)
+            if valid_loss < best_valid:
+                best_valid = valid_loss
+                models[0].save("embedder")
+                models[1].save("encoder")
+                models[2].save("classifier")
+            else:
+                print("updating LR")
+                for model in models:
+                    for param_group in model.optimizer.param_groups:
+                        param_group['lr'] /= 2
+
+    def run(self, params, batcher):
+        self.X, self.y = {}, {}
+        for key in self.data:
+            if key not in self.X:
+                self.X[key] = []
+            if key not in self.y:
+                self.y[key] = []
+
+            input1, input2, mylabels = self.data[key]
+            enc_input = []
+            n_labels = len(mylabels)
+            for ii in range(0, n_labels, params.batch_size):
+                batch1 = input1[ii:ii + params.batch_size]
+                batch2 = input2[ii:ii + params.batch_size]
+
+                if len(batch1) == len(batch2) and len(batch1) > 0:
+                    enc1 = batcher(params, batch1)
+                    enc2 = batcher(params, batch2)
+                    enc_input.append(np.hstack((enc1, enc2, enc1 * enc2,
+                                                np.abs(enc1 - enc2))))
+                if (ii * params.batch_size) % (20000 * params.batch_size) == 0:
+                    logging.info("PROGRESS (encoding): %.2f%%" %
+                                 (100 * ii / n_labels))
+            self.X[key] = np.vstack(enc_input)
+            self.y[key] = [self.dico_label[y] for y in mylabels]
+
+        config = {'nclasses': 3, 'seed': self.seed,
+                  'usepytorch': params.usepytorch,
+                  'cudaEfficient': True,
+                  'nhid': params.nhid, 'noreg': True}
+
+        config_classifier = copy.deepcopy(params.classifier)
+        config_classifier['max_epoch'] = 15
+        config_classifier['epoch_size'] = 1
+        config['classifier'] = config_classifier
+
+        clf = SplitClassifier(self.X, self.y, config)
+        devacc, testacc = clf.run()
+        logging.debug('Dev acc : {0} Test acc : {1} for SNLI\n'
+                      .format(devacc, testacc))
+        return {'devacc': devacc, 'acc': testacc,
+                'ndev': len(self.data['valid'][0]),
+                'ntest': len(self.data['test'][0])}
