@@ -5,8 +5,10 @@ import logging
 from os import path as osp
 import pickle
 
-from configuration import VocabConfig as vconfig
-from utils import subwords, helpers, vocab
+from configuration import GPU, VocabConfig as vconfig
+from utils.helpers import word_lists_to_lines, create_vocabulary, create_subwords
+from models.sentence_encoders import *
+from models.bert_based_models import *
 
 # Set PATHs
 PATH_TO_SENTEVAL = '../'
@@ -17,65 +19,24 @@ sys.path.insert(0, PATH_TO_SENTEVAL)
 import senteval
 
 
-def lines_from_list(sentences):
-    # TODO: take in lines instead of list of lists
-    for sentence in sentences:
-        yield " ".join(sentence) + "\n"
-
-
-# If subwords already exist, load them, create them otherwise
-def create_subwords(lines, task_folder, task_name):
-    subwords_folder = osp.join(task_folder, "vocab")
-    print(subwords_folder)
-    sub_model_path = osp.join(subwords_folder, "{}.{}.model".format(task_name, vconfig.subwords_model_type))
-    try:
-        reader = subwords.SubwordReader(sub_model_path)
-    except (FileNotFoundError, OSError):
-        helpers.makedirs(subwords_folder)
-        subwords_data_path = osp.join(subwords_folder, "{}_subwords_source.txt".format(task_name))
-        if not osp.exists(subwords_data_path):
-            print("writing out subwords source file")
-            with open(subwords_data_path, "w") as f:
-                for line in lines:
-                    f.write(line)
-        subwords.train(subwords_folder, subwords_data_path, prefix=task_name + ".")
-        reader = subwords.SubwordReader(sub_model_path)
-    return reader
-
-
-# If a vocabulary already exists, load it, create it otherwise
-def create_dictionary(lines, task_folder, task_name):
-    vocab_folder = osp.join(task_folder, "vocab")
-    vocab_file_path = osp.join(vocab_folder, "{}.vocab".format(task_name))
-    # use vocab class
-    try:
-        task_vocab = pickle.load(open(vocab_file_path, 'rb'))
-    except FileNotFoundError:
-        helpers.makedirs(vocab_folder)
-        task_vocab = vocab.Vocab.from_corpus(lines, vconfig.vocab_size, vconfig.freq_cutoff)
-        pickle.dump(task_vocab, open(vocab_file_path, 'wb'))
-    return task_vocab
-
-
 # SentEval prepare and batcher
 
 def prepare(params, samples):
     # run vocab + subwords
     # TODO: take in lines instead of list of lists
+    lines = word_lists_to_lines(samples)
     if vconfig.subwords:
-        lines = lines_from_list(samples)
         reader = create_subwords(lines, params.task_path, params.current_task)
         params.reader = reader
-    # reset generator in case subwords exhausted it
-    lines = lines_from_list(samples)
-    if vconfig.subwords:
+        # need to re-create the generator
+        lines = word_lists_to_lines(samples)
         lines = reader.lines_to_subwords(lines)
-    params.vocab = create_dictionary(lines, params.task_path, params.current_task)
+    params.vocab = create_vocabulary(lines, params.task_path, params.current_task)
     return
 
 
 def batcher(params, batch):
-    # 1-hot embedding
+    # TODO: write batcher for transfer eval
     return
 
 
@@ -88,7 +49,12 @@ params_senteval['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 12
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
 if __name__ == "__main__":
-    se = senteval.engine.SE(params_senteval, prepare)
+    word_embedder = TransformerWordEmbedder()
+    sentence_embedder = RandomLSTM()
+    if GPU:
+        word_embedder = word_embedder.cuda()
+        sentence_embedder = sentence_embedder.cuda()
+    te = senteval.train_engine.TrainEngine(params_senteval, word_embedder, sentence_embedder, prepare)
     training_tasks = ['SNLI']
-    results = se.eval(training_tasks)
+    results = te.train(training_tasks)
     print(results)

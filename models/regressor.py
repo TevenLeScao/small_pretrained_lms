@@ -3,7 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.optim import Adam
 
-from models.general_model import GeneralModel
+from models.structure import GeneralModel
 from configuration import TrainConfig as tconfig, VocabConfig as vconfig
 
 default_vocab_size = vconfig.subwords_vocab_size if vconfig.subwords else vconfig.vocab_size

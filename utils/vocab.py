@@ -2,10 +2,8 @@
 
 from collections import Counter
 from itertools import chain
-import pickle
 
 import configuration
-from utils import subwords
 
 vconfig = configuration.VocabConfig()
 
