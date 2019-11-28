@@ -92,6 +92,7 @@ class SNLI(object):
 
     def epoch_loop(self, data, models, params, validation=False):
         epoch_losses = []
+        epoch_accuracies = []
         if validation:
             for model in models:
                 model.eval()
@@ -108,22 +109,26 @@ class SNLI(object):
                 else:
                     labels = torch.LongTensor(labels)
                 enc1, enc2 = sentence_encoder(word_embedder(sents1, mask1), mask1), \
-                                  sentence_encoder(word_embedder(sents2, mask2), mask2)
+                             sentence_encoder(word_embedder(sents2, mask2), mask2)
                 classifier_input = torch.cat((enc1, enc2, enc1 * enc2, (enc1 - enc2).abs()), dim=1)
-                loss = classifier.decode_to_loss(classifier_input, labels)
+                predictions = classifier(classifier_input)
+                loss = classifier.predictions_to_loss(predictions, labels)
+                acc = classifier.predictions_to_acc(predictions, labels)
+                epoch_accuracies.append(acc.item())
+                epoch_losses.append(loss.item())
                 if not validation:
                     loss = loss / tconfig.accumulate
                     loss.backward()
                     for model in models:
                         model.step()
-                epoch_losses.append(loss.item())
                 progress_bar(batch_num, (len(data[0]) // tconfig.batch_size) + 1,
-                             msg="{:.4f} {} loss    ".format(np.mean(epoch_losses),
-                                                             "validation" if validation else "training"))
+                             msg=progress_bar_msg(validation, epoch_losses, epoch_accuracies))
         if validation:
             for model in models:
                 model.train()
-        return np.mean(epoch_losses)
+            return np.mean(epoch_losses), np.mean(epoch_accuracies)
+        else:
+            return np.mean(epoch_losses), None
 
     def train(self, params, word_embedder: WordEmbedder, sentence_encoder: SentenceEncoder):
         best_valid = 1e10
@@ -131,6 +136,10 @@ class SNLI(object):
         if GPU:
             classifier = classifier.cuda()
         models = {"embedder": word_embedder, "encoder": sentence_encoder, "classifier": classifier}
+        if tconfig.load_models:
+            for key, model in models.items():
+                print("reloaded {}".format(key))
+                model.load_params(osp.join(params.current_xp_folder, key))
 
         sub_reader = params.get("reader")
         if sub_reader is not None:
@@ -143,10 +152,9 @@ class SNLI(object):
                                   [self.dico_label[value] for value in self.data['valid'][2]])
             print(len(self.data['valid'][0]))
 
-
         for epoch in range(tconfig.max_epoch):
-            train_loss = self.epoch_loop(self.data['train'], models.values(), params, validation=False)
-            valid_loss = self.epoch_loop(self.data['valid'], models.values(), params, validation=True)
+            train_loss, _ = self.epoch_loop(self.data['train'], models.values(), params, validation=False)
+            valid_loss, valid_accuracy = self.epoch_loop(self.data['valid'], models.values(), params, validation=True)
             if valid_loss < best_valid:
                 best_valid = valid_loss
                 for key, model in models.items():
@@ -158,7 +166,6 @@ class SNLI(object):
                     model.update_learning_rate(tconfig.lr_decay)
                     if model.get_current_learning_rate() < tconfig.min_lr:
                         break
-
 
     def run(self, params, batcher):
         self.X, self.y = {}, {}
@@ -203,3 +210,8 @@ class SNLI(object):
         return {'devacc': devacc, 'acc': testacc,
                 'ndev': len(self.data['valid'][0]),
                 'ntest': len(self.data['test'][0])}
+
+
+def progress_bar_msg(validation, epoch_losses, epoch_accuracies):
+    letter = "v" if validation else "t"
+    return "{:.4f} {}. loss {:.3f} {}. acc.   ".format(np.mean(epoch_losses), letter, np.mean(epoch_accuracies), letter)

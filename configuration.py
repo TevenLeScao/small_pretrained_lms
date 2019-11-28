@@ -2,7 +2,7 @@ import os.path as osp
 import torch
 
 SANITY = False
-GPU = torch.cuda.is_available() and not SANITY
+GPU = torch.cuda.is_available()
 
 class Paths:
     code_path = osp.dirname(osp.realpath(__file__))
@@ -27,12 +27,18 @@ class VocabConfig:
 
 class ModelConfig:
     if SANITY:
+        # model = "transformer"
+        # depth = 1
+        # width = 8
+        # d_ff = 8
+        # n_head = 2
+        # sentence_width = 16
         model = "transformer"
-        depth = 1
-        width = 8
-        d_ff = 8
-        n_head = 2
-        sentence_width = 16
+        depth = 6
+        width = 256
+        d_ff = 512
+        n_head = 16
+        sentence_width = 1024
     else:
         model = "transformer"
         depth = 6
@@ -44,6 +50,7 @@ class ModelConfig:
 
 
 class TrainConfig:
+    load_models = False
     lr = 0.001
     weight_decay = 0.00001
     batch_size = 64

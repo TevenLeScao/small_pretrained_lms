@@ -116,8 +116,12 @@ class StandardMLP(GeneralModel):
     def forward(self, inp):
         return self.mlp(inp)
 
-    def decode_to_loss(self, inp, target):
-        return self.loss_fn(self(inp), target)
+    def predictions_to_loss(self, predictions, target):
+        return self.loss_fn(predictions, target)
+
+    def predictions_to_acc(self, predictions, target):
+        predictions = predictions.max(dim=1)[1]
+        return (predictions == target).sum().double() / target.shape[0]
 
     def main_module(self):
         return self.mlp
