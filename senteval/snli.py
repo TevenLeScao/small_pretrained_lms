@@ -155,7 +155,9 @@ class SNLI(object):
                 print("updating LR")
                 for key, model in models.items():
                     model.load_params(osp.join(params.current_xp_folder, key))
-                    model.update_learning_rate(0.7)
+                    model.update_learning_rate(tconfig.lr_decay)
+                    if model.get_current_learning_rate() < tconfig.min_lr:
+                        break
 
 
     def run(self, params, batcher):

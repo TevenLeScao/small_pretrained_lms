@@ -48,8 +48,9 @@ class TrainConfig:
     weight_decay = 0.00001
     batch_size = 64
     clip_grad = 5.0
-    lr_decay = 0.2
+    lr_decay = 0.7
     max_epoch = 100
     patience = 3
     max_num_trial = 3
     accumulate = 8
+    min_lr = 0.00001
