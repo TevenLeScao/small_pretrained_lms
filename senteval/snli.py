@@ -10,6 +10,8 @@ SNLI - Entailment
 '''
 from __future__ import absolute_import, division, unicode_literals
 
+import json
+from time import time
 import codecs
 import os
 import os.path as osp
@@ -126,20 +128,27 @@ class SNLI(object):
         if validation:
             for model in models:
                 model.train()
-            return np.mean(epoch_losses), np.mean(epoch_accuracies)
-        else:
-            return np.mean(epoch_losses), None
+        return np.mean(epoch_losses), np.mean(epoch_accuracies)
 
     def train(self, params, word_embedder: WordEmbedder, sentence_encoder: SentenceEncoder):
+        start_time = time()
+        training_history = {'time': [], 'train_loss': [], 'train_acc': [], 'valid_loss': [], 'valid_acc': []}
         best_valid = 1e10
+        start_epoch = 0
         classifier = StandardMLP(params, sentence_encoder.sentence_dim * 4, self.n_classes)
         if GPU:
             classifier = classifier.cuda()
         models = {"embedder": word_embedder, "encoder": sentence_encoder, "classifier": classifier}
         if tconfig.load_models:
-            for key, model in models.items():
-                print("reloaded {}".format(key))
-                model.load_params(osp.join(params.current_xp_folder, key))
+            try:
+                for key, model in models.items():
+                    print("reloaded {}".format(key))
+                    model.load_params(osp.join(params.current_xp_folder, key))
+                training_history = json.load(open(osp.join(params.current_xp_folder, "training_history.json"), 'r'))
+                best_valid = min(training_history['valid_loss'])
+                start_epoch = len(training_history['valid_loss'])
+            except FileNotFoundError:
+                print("Could not find models to load")
 
         sub_reader = params.get("reader")
         if sub_reader is not None:
@@ -152,11 +161,15 @@ class SNLI(object):
                                   [self.dico_label[value] for value in self.data['valid'][2]])
             print(len(self.data['valid'][0]))
 
-        for epoch in range(tconfig.max_epoch):
-            train_loss, _ = self.epoch_loop(self.data['train'], models.values(), params, validation=False)
-            valid_loss, valid_accuracy = self.epoch_loop(self.data['valid'], models.values(), params, validation=True)
-            if valid_loss < best_valid:
-                best_valid = valid_loss
+        for epoch in range(start_epoch, tconfig.max_epoch):
+            print("epoch {}".format(epoch))
+            train_loss, train_acc = self.epoch_loop(self.data['train'], models.values(), params, validation=False)
+            valid_loss, valid_acc = self.epoch_loop(self.data['valid'], models.values(), params, validation=True)
+            elapsed_time = time() - start_time
+            update_training_history(training_history, elapsed_time, train_loss, train_acc, valid_loss, valid_acc)
+            json.dump(training_history, open(osp.join(params.current_xp_folder, "training_history.json"), 'w'))
+            if valid_acc < best_valid:
+                best_valid = valid_acc
                 for key, model in models.items():
                     model.save(osp.join(params.current_xp_folder, key))
             else:
@@ -214,4 +227,12 @@ class SNLI(object):
 
 def progress_bar_msg(validation, epoch_losses, epoch_accuracies):
     letter = "v" if validation else "t"
-    return "{:.4f} {}. loss {:.3f} {}. acc.   ".format(np.mean(epoch_losses), letter, np.mean(epoch_accuracies), letter)
+    return "{:.4f} {}. loss | {:.3f} {}. acc.   ".format(np.mean(epoch_losses), letter, np.mean(epoch_accuracies), letter)
+
+
+def update_training_history(history, time, train_loss, train_acc, valid_loss, valid_acc):
+    history['time'].append(time)
+    history['train_loss'].append(train_loss)
+    history['train_acc'].append(train_acc)
+    history['valid_loss'].append(valid_loss)
+    history['valid_acc'].append(valid_acc)

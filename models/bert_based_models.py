@@ -25,3 +25,10 @@ class TransformerWordEmbedder(WordEmbedder):
 
     def forward(self, sentences, sent_mask):
         return self.bert(input_ids=sentences, attention_mask=sent_mask)[0]
+
+    def to_huggingface_format(self, pooler: SentenceEncoder, classifier):
+        formatted_model = BertForSequenceClassification(self.config)
+        formatted_model.bert = self.bert
+        formatted_model.bert.pooler = pooler
+        formatted_model.classifier = classifier
+        return formatted_model
