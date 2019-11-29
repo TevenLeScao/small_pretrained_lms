@@ -133,7 +133,7 @@ class SNLI(object):
     def train(self, params, word_embedder: WordEmbedder, sentence_encoder: SentenceEncoder):
         start_time = time()
         training_history = {'time': [], 'train_loss': [], 'train_acc': [], 'valid_loss': [], 'valid_acc': []}
-        best_valid = 1e10
+        best_valid = 0
         start_epoch = 0
         classifier = StandardMLP(params, sentence_encoder.sentence_dim * 4, self.n_classes)
         if GPU:
@@ -168,7 +168,7 @@ class SNLI(object):
             elapsed_time = time() - start_time
             update_training_history(training_history, elapsed_time, train_loss, train_acc, valid_loss, valid_acc)
             json.dump(training_history, open(osp.join(params.current_xp_folder, "training_history.json"), 'w'))
-            if valid_acc < best_valid:
+            if valid_acc > best_valid:
                 best_valid = valid_acc
                 for key, model in models.items():
                     model.save(osp.join(params.current_xp_folder, key))
