@@ -44,7 +44,6 @@ logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
 if __name__ == "__main__":
     word_embedder = TransformerWordEmbedder()
-    word_embedder.to_huggingface_format()
     print(word_embedder)
     sentence_embedder = RandomLSTM()
     if GPU:
