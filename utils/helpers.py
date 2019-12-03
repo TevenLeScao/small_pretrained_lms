@@ -70,6 +70,12 @@ def word_lists_to_lines(sentences):
     for sentence in sentences:
         yield " ".join(sentence) + "\n"
 
+def lines_to_word_lists(lines):
+    if isinstance(lines, str):
+        lines = lines.split("\n")
+    for line in lines:
+        yield line.split()
+
 
 # If subwords already exist, load them, create them otherwise
 def create_subwords(lines, task_folder, task_name):

@@ -11,6 +11,7 @@ class Paths:
     project_path = osp.join(code_path, "..")
     data_path = osp.join(project_path, "data")
     senteval_data_path = osp.join(data_path, "senteval")
+    semeval_data_path = osp.join(data_path, "semeval")
     experiment_path = osp.join(project_path, "experiments", EXPERIMENT_NAME)
     results_path = osp.join(project_path, "results", EXPERIMENT_NAME)
 
