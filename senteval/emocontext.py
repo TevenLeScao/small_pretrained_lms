@@ -9,9 +9,10 @@ import json
 
 from models.sentence_encoders import SentenceEncoder
 from models.structure import WordEmbedder, StandardMLP
-from utils.helpers import prepare_sentences, batch_iter, word_lists_to_lines, lines_to_word_lists
+from utils.helpers import\
+    prepare_sentences, batch_iter, word_lists_to_lines, lines_to_word_lists, progress_bar_msg, update_training_history
 from utils.progress_bar import progress_bar
-from configuration import GPU, TrainConfig as tconfig
+from configuration import SANITY, GPU, TrainConfig as tconfig
 from contextlib import nullcontext
 
 
@@ -30,16 +31,21 @@ class EmoContext(object):
         test = zip(test1, test2, test3, testlabels)
 
         # sort to reduce the batch width
-        train_sorted = sorted(train, key=lambda z: len(z[0]) + len(z[1]) + len(z[2]))
-        dev_sorted = sorted(dev, key=lambda z: len(z[0]) + len(z[1]) + len(z[2]))
-        test_sorted = sorted(test, key=lambda z: len(z[0]) + len(z[1]) + len(z[2]))
+        train_sorted = sorted(train, key=lambda z: len(z[0]) + len(z[1]) + len(z[2]))[1:]
+        dev_sorted = sorted(dev, key=lambda z: len(z[0]) + len(z[1]) + len(z[2]))[1:]
+        test_sorted = sorted(test, key=lambda z: len(z[0]) + len(z[1]) + len(z[2]))[1:]
 
-        self.data = {"train": train_sorted,
-                     "dev": dev_sorted,
-                     "test": test_sorted}
+        if SANITY:
+            self.data = {"train": list(zip(*train_sorted[:100])),
+                         "dev": list(zip(*dev_sorted[:100])),
+                         "test": list(zip(*test_sorted[:100]))}
+        else:
+            self.data = {"train": list(zip(*train_sorted)),
+                     "dev": list(zip(*dev_sorted)),
+                     "test": list(zip(*test_sorted))}
 
-        self.dict_label = {'other': 0, 'happy': 1, 'sad': 2}
-        self.n_classes = 3
+        self.dict_label = {'others': 0, 'happy': 1, 'sad': 2, 'angry' : 3}
+        self.n_classes = len(self.dict_label)
         self.data_source = self.data
         self.samples = train1 + train2 + train3 + dev1 + dev2 + dev3 + test1 + test2 + test3
         self.training_samples = train1 + train2 + train3
@@ -66,6 +72,7 @@ class EmoContext(object):
 
     def epoch_loop(self, data, models, params, validation=False):
         epoch_losses = []
+        epoch_accuracies = []
         if validation:
             for model in models:
                 model.eval()
@@ -75,7 +82,7 @@ class EmoContext(object):
         word_embedder, sentence_encoder, classifier = models
         with context:
             for batch_num, (sents1, sents2, sents3, labels) in enumerate(
-                    batch_iter(list(zip(*data)), tconfig.batch_size)):
+                    batch_iter(data, tconfig.batch_size)):
                 sents1, mask1 = prepare_sentences(sents1, params.vocab)
                 sents2, mask2 = prepare_sentences(sents2, params.vocab)
                 sents3, mask3 = prepare_sentences(sents3, params.vocab)
@@ -87,20 +94,25 @@ class EmoContext(object):
                                    sentence_encoder(word_embedder(sents2, mask2), mask2), \
                                    sentence_encoder(word_embedder(sents3, mask3), mask3)
                 classifier_input = torch.cat((enc1, enc2, enc3, enc1 * enc2, enc2 * enc3, enc3 * enc1), dim=1)
-                loss = classifier.decode_to_loss(classifier_input, labels)
+                loss = classifier.predictions_to_loss(classifier_input, labels)
                 if not validation:
                     loss = loss / tconfig.accumulate
                     loss.backward()
                     for model in models:
                         model.step()
+
                 epoch_losses.append(loss.item())
-                progress_bar(batch_num, (len(data[0]) // tconfig.batch_size) + 1,
+                predictions = classifier(classifier_input)
+                acc = classifier.predictions_to_acc(predictions, labels)
+                epoch_accuracies.append(acc.item())
+
+                progress_bar(batch_num, (len(data) // tconfig.batch_size) + 1,
                              msg="{:.4f} {} loss    ".format(np.mean(epoch_losses),
                                                              "validation" if validation else "training"))
         if validation:
             for model in models:
                 model.train()
-        return np.mean(epoch_losses)
+        return np.mean(epoch_losses), np.mean(epoch_accuracies)
 
     def train(self, params, word_embedder: WordEmbedder, sentence_encoder: SentenceEncoder):
         start_time = time()
@@ -127,17 +139,17 @@ class EmoContext(object):
             self.data_subwords = {}
             self.data_source = self.data_subwords
             for data_type in ['train', 'dev']:
-                self.data_subwords[data_type] = (
-                    (list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data[data_type][i])))
-                     for i in range(3)),
-                    [self.dict_label[value] for value in self.data[data_type][3]])
-            print(len(self.data['train'][0]))
-            print(len(self.data['valid'][0]))
+                sub_list = [list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data[data_type][i])))\
+                            for i in range(3)]
+                label_list = [self.dict_label[value] for value in self.data[data_type][3]]
+                self.data_subwords[data_type] = list(zip(sub_list[0],sub_list[1],sub_list[2], label_list))
+            print(len(self.data_subwords['train'][0]))
+            print(len(self.data['dev'][0]))
 
         for epoch in range(start_epoch, tconfig.max_epoch):
             print("epoch {}".format(epoch))
             train_loss, train_acc = self.epoch_loop(self.data_source['train'], models.values(), params, validation=False)
-            valid_loss, valid_acc = self.epoch_loop(self.data_source['valid'], models.values(), params, validation=True)
+            valid_loss, valid_acc = self.epoch_loop(self.data_source['dev'], models.values(), params, validation=True)
             elapsed_time = time() - start_time
             update_training_history(training_history, elapsed_time, train_loss, train_acc, valid_loss, valid_acc)
             json.dump(training_history, open(os.path.join(params.current_xp_folder, "training_history.json"), 'w'))

@@ -191,3 +191,15 @@ def get_optimizer(s):
             str(expected_args[2:]), str(optim_params.keys())))
 
     return optim_fn, optim_params
+
+def progress_bar_msg(validation, epoch_losses, epoch_accuracies):
+    letter = "v" if validation else "t"
+    return "{:.4f} {}. loss | {:.3f} {}. acc.   ".format(np.mean(epoch_losses), letter, np.mean(epoch_accuracies), letter)
+
+
+def update_training_history(history, time, train_loss, train_acc, valid_loss, valid_acc):
+    history['time'].append(time)
+    history['train_loss'].append(train_loss)
+    history['train_acc'].append(train_acc)
+    history['valid_loss'].append(valid_loss)
+    history['valid_acc'].append(valid_acc)

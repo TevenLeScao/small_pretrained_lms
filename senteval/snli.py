@@ -27,7 +27,8 @@ from senteval.tools.validation import SplitClassifier
 
 from models.sentence_encoders import SentenceEncoder
 from models.structure import WordEmbedder, StandardMLP
-from utils.helpers import prepare_sentences, batch_iter, word_lists_to_lines, makedirs
+from utils.helpers import\
+    prepare_sentences, batch_iter, word_lists_to_lines, makedirs, progress_bar_msg, update_training_history
 from utils.progress_bar import progress_bar
 from configuration import SANITY, GPU, TrainConfig as tconfig
 
@@ -224,15 +225,3 @@ class SNLI(object):
                 'ndev': len(self.data['valid'][0]),
                 'ntest': len(self.data['test'][0])}
 
-
-def progress_bar_msg(validation, epoch_losses, epoch_accuracies):
-    letter = "v" if validation else "t"
-    return "{:.4f} {}. loss | {:.3f} {}. acc.   ".format(np.mean(epoch_losses), letter, np.mean(epoch_accuracies), letter)
-
-
-def update_training_history(history, time, train_loss, train_acc, valid_loss, valid_acc):
-    history['time'].append(time)
-    history['train_loss'].append(train_loss)
-    history['train_acc'].append(train_acc)
-    history['valid_loss'].append(valid_loss)
-    history['valid_acc'].append(valid_acc)

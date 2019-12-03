@@ -6,8 +6,7 @@ from torch.nn.parallel.distributed import DistributedDataParallel
 
 from utils.helpers import get_optimizer
 
-from configuration import TrainConfig as tconfig, VocabConfig as vconfig
-
+from configuration import GPU, TrainConfig as tconfig, VocabConfig as vconfig
 
 class GeneralModel(nn.Module):
 
@@ -90,16 +89,20 @@ class WordEmbedder(GeneralModel):
 def standard_mlp(params, inputdim, nclasses):
     dropout = 0. if "dropout" not in params else params["dropout"]
     if params["nhid"] == 0:
-        return nn.Sequential(
+        mlp = nn.Sequential(
             nn.Linear(inputdim, nclasses),
-        ).cuda()
+        )
     else:
-        return nn.Sequential(
+        mlp = nn.Sequential(
             nn.Linear(inputdim, params["nhid"]),
             nn.Dropout(p=dropout),
             nn.Sigmoid(),
             nn.Linear(params["nhid"], nclasses),
-        ).cuda()
+        )
+    if GPU:
+        return mlp.cuda()
+    else:
+        return mlp
 
 
 class StandardMLP(GeneralModel):
@@ -110,7 +113,10 @@ class StandardMLP(GeneralModel):
         optim_fn, optim_params = get_optimizer(optim)
         self.optimizer = optim_fn(self.mlp.parameters(), **optim_params)
         self.optimizer.param_groups[0]['weight_decay'] = tconfig.weight_decay
-        self.loss_fn = nn.CrossEntropyLoss().cuda()
+        if GPU:
+            self.loss_fn = nn.CrossEntropyLoss().cuda()
+        else:
+            self.loss_fn = nn.CrossEntropyLoss()
         self.loss_fn.size_average = False
 
     def forward(self, inp):

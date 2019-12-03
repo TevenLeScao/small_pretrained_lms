@@ -1,7 +1,7 @@
 import os.path as osp
 import torch
 
-SANITY = False
+SANITY = True
 GPU = torch.cuda.is_available()
 EXPERIMENT_NAME = "first_long_training"
 
@@ -52,14 +52,18 @@ class ModelConfig:
 
 
 class TrainConfig:
-    load_models = True
     lr = 0.001
     weight_decay = 0.00001
     batch_size = 64
     clip_grad = 5.0
     lr_decay = 0.7
-    max_epoch = 100
     patience = 3
     max_num_trial = 3
     accumulate = 8
     min_lr = 0.00001
+    if SANITY:
+        max_epoch = 2
+        load_models = False
+    else:
+        max_epoch = 100
+        load_models = True
