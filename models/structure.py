@@ -3,7 +3,7 @@ from typing import List
 import torch
 from torch import nn
 from torch.nn.parallel.distributed import DistributedDataParallel
-
+from sklearn.metrics import f1_score
 from utils.helpers import get_optimizer
 
 from configuration import GPU, TrainConfig as tconfig, VocabConfig as vconfig
@@ -128,6 +128,13 @@ class StandardMLP(GeneralModel):
     def predictions_to_acc(self, predictions, target):
         predictions = predictions.max(dim=1)[1]
         return (predictions == target).sum().double() / target.shape[0]
+
+    def predictions_to_f1(self, predictions, target):
+        if GPU:
+            predictions = predictions.cpu()
+            target = target.cpu()
+        predictions = predictions.max(dim=1)[1]
+        return f1_score(target, predictions, average='micro')
 
     def main_module(self):
         return self.mlp

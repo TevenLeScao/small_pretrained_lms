@@ -209,12 +209,17 @@ class EmoContext(object):
             test_embed, test_labels = test_embed.cuda(), test_labels.cuda()
 
         with torch.no_grad():
-            dev_loss = classifier.predictions_to_loss(classifier(dev_embed), dev_labels).item()
-            dev_acc = classifier.predictions_to_acc(classifier(dev_embed), dev_labels).item()
-            test_loss = classifier.predictions_to_loss(classifier(test_embed), test_labels).item()
-            test_acc = classifier.predictions_to_acc(classifier(test_embed), test_labels).item()
+            dev_scores = classifier(dev_embed)
+            test_scores = classifier(test_embed)
+            dev_loss = classifier.predictions_to_loss(dev_scores, dev_labels).item()
+            dev_acc = classifier.predictions_to_acc(dev_scores, dev_labels).item()
+            dev_f1 = classifier.predictions_to_f1(dev_scores, dev_labels).item()
+            test_loss = classifier.predictions_to_loss(test_scores, test_labels).item()
+            test_acc = classifier.predictions_to_acc(test_scores, test_labels).item()
+            test_f1 = classifier.predictions_to_f1(test_scores, test_labels).item()
 
         return {'devacc': dev_acc, 'acc': test_acc,
                 'devloss': dev_loss, 'loss': test_loss,
+                'devf1': dev_f1, 'f1': test_f1,
                 'ndev': len(self.data['dev'][0]),
                 'ntest': len(self.data['test'][0])}
