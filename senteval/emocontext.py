@@ -203,9 +203,10 @@ class EmoContext(object):
             classifier.step()
 
         dev_embed, dev_labels = self.examples['dev']
-        dev_embed, dev_labels = dev_embed, dev_labels
         test_embed, test_labels = self.examples['test']
-        test_embed, test_labels = test_embed, test_labels
+        if GPU:
+            dev_embed, dev_labels = dev_embed.cuda(), dev_labels.cuda()
+            test_embed, test_labels = test_embed.cuda(), test_labels.cuda()
 
         with torch.no_grad():
             dev_loss = classifier.predictions_to_loss(classifier(dev_embed), dev_labels).item()
