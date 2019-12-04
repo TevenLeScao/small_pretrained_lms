@@ -22,6 +22,7 @@ from senteval.sts import STS12Eval, STS13Eval, STS14Eval, STS15Eval, STS16Eval, 
 from senteval.sst import SSTEval
 from senteval.rank import ImageCaptionRetrievalEval
 from senteval.probing import *
+from senteval.emocontext import EmoContext
 
 
 class SE(object):
@@ -52,7 +53,7 @@ class SE(object):
                            'STS14', 'STS15', 'STS16',
                            'Length', 'WordContent', 'Depth', 'TopConstituents',
                            'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
-                           'OddManOut', 'CoordinationInversion']
+                           'OddManOut', 'CoordinationInversion', 'EmoContext']
 
     def eval(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
@@ -104,6 +105,9 @@ class SE(object):
         elif name == 'ImageCaptionRetrieval':
             self.params.task_path += '/downstream/COCO'
             self.evaluation = ImageCaptionRetrievalEval(self.params.task_path, seed=self.params.seed)
+        elif name == 'EmoContext':
+            self.params.task_path += '/downstream/EmoContext'
+            self.evaluation = EmoContext(self.params.task_path, seed=self.params.seed)
 
         # Probing Tasks
         elif name == 'Length':

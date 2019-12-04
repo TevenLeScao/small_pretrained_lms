@@ -1,8 +1,6 @@
 '''emotional context analysis'''
 import os
-import io
 import torch
-import emojis
 import numpy as np
 from time import time
 import json
@@ -94,7 +92,8 @@ class EmoContext(object):
                                    sentence_encoder(word_embedder(sents2, mask2), mask2), \
                                    sentence_encoder(word_embedder(sents3, mask3), mask3)
                 classifier_input = torch.cat((enc1, enc2, enc3, enc1 * enc2, enc2 * enc3, enc3 * enc1), dim=1)
-                loss = classifier.predictions_to_loss(classifier_input, labels)
+                predictions = classifier(classifier_input)
+                loss = classifier.predictions_to_loss(predictions, labels)
                 if not validation:
                     loss = loss / tconfig.accumulate
                     loss.backward()
@@ -164,3 +163,54 @@ class EmoContext(object):
                     model.update_learning_rate(tconfig.lr_decay)
                     if model.get_current_learning_rate() < tconfig.min_lr:
                         break
+
+    def run(self, params, batcher):
+        self.examples = {}
+        for key in self.data_source:
+            if key not in self.examples:
+                self.examples[key] = []
+            s1, s2, s3, labels = self.data_source[key]
+            enc_input = []
+            n_labels = len(labels)
+            for ii in range(0, n_labels, params.batch_size):
+                batch1 = s1[ii:ii + params.batch_size]
+                batch2 = s2[ii:ii + params.batch_size]
+                batch3 = s3[ii:ii + params.batch_size]
+
+                if len(batch1) == len(batch2) and len(batch1) > 0:
+                    enc1 = batcher(params, batch1)
+                    enc2 = batcher(params, batch2)
+                    enc3 = batcher(params, batch3)
+                    enc_input.append(np.hstack((enc1, enc2, enc3, enc1 * enc2, enc2 * enc3, enc3 * enc1)))
+                if ii % 200 == 0:
+                    print("PROGRESS (encoding %s): %.2f%%" %(key, 100 * ii / n_labels))
+            labels = np.array([self.dict_label[y] for y in labels])
+            self.examples[key] = (np.vstack(enc_input), labels)
+        sentence_dim = self.examples['train'][0].shape[1]
+
+        classifier = StandardMLP(params, sentence_dim, self.n_classes)
+        train_data = self.examples['train']
+        train_data = [(train_data[0][i], train_data[1][i]) for i in range(train_data[0].shape[0])]
+        for embed, targets in batch_iter(train_data, params.batch_size):
+            embed = torch.tensor(embed)
+            targets = torch.LongTensor(targets)
+            predictions = classifier(embed)
+            loss = classifier.predictions_to_loss(predictions, targets)
+            loss.backward()
+            classifier.step()
+
+        dev_embed, dev_labels = self.examples['dev']
+        dev_embed, dev_labels = torch.tensor(dev_embed), torch.LongTensor(dev_labels)
+        test_embed, test_labels = self.examples['test']
+        test_embed, test_labels = torch.tensor(test_embed), torch.LongTensor(test_labels)
+
+        with torch.no_grad():
+            dev_loss = classifier.predictions_to_loss(classifier(dev_embed), dev_labels).item()
+            dev_acc = classifier.predictions_to_acc(classifier(dev_embed), dev_labels).item()
+            test_loss = classifier.predictions_to_loss(classifier(test_embed), test_labels).item()
+            test_acc = classifier.predictions_to_acc(classifier(test_embed), test_labels).item()
+
+        return {'devacc': dev_acc, 'acc': test_acc,
+                'devloss': dev_loss, 'loss': test_loss,
+                'ndev': len(self.data['dev'][0]),
+                'ntest': len(self.data['test'][0])}

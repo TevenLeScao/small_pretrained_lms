@@ -1,7 +1,7 @@
 import os.path as osp
 import torch
 
-SANITY = True
+SANITY = False
 GPU = torch.cuda.is_available()
 EXPERIMENT_NAME = "first_long_training"
 
