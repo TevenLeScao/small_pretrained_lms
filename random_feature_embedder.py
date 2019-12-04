@@ -6,7 +6,8 @@ from os import path as osp
 import pickle
 
 from configuration import GPU, VocabConfig as vconfig, Paths
-from utils.helpers import word_lists_to_lines, create_vocabulary, create_subwords
+from utils.helpers import word_lists_to_lines, lines_to_word_lists,\
+    create_vocabulary, create_subwords, prepare_sentences
 from models.sentence_encoders import *
 from models.bert_based_models import *
 
@@ -30,8 +31,31 @@ def prepare(params, samples):
 
 
 def batcher(params, batch):
-    # TODO: write batcher for transfer eval
-    return
+    # batch is an array of (string) sentences or list of word lists
+    if not isinstance(batch[0], str):
+        # normalize the batch
+        batch = word_lists_to_lines(batch)
+
+    global word_embedder
+    global sentence_embedder
+
+    if vconfig.subwords:
+        #TODO: cleanup the reader loading. This code might be risky, as we use small batches
+        if not params.reader:
+            reader = create_subwords(batch, params.task_path, params.current_task)
+            params.reader = reader
+        lines = list(params.reader.lines_to_subwords(batch))
+    else:
+        #TODO: apply a vocabulary
+        lines = lines_to_word_lists(batch)
+    if not params.vocab:
+        params.vocab = create_vocabulary(lines, params.task_path, params.current_task)
+    feature_vectors, masks = prepare_sentences(lines, params.vocab)
+
+    with torch.no_grad():
+        sentence_vectors = sentence_embedder(word_embedder(feature_vectors, masks), masks)
+
+    return sentence_vectors
 
 
 # Set params for SentEval
@@ -51,5 +75,11 @@ if __name__ == "__main__":
         sentence_embedder = sentence_embedder.cuda()
     te = senteval.train_engine.TrainEngine(params_senteval, word_embedder, sentence_embedder, prepare)
     training_tasks = ['EmoContext']
-    results = te.train(training_tasks)
-    print(results)
+    testing_tasks = ['EmoContext']
+    ee = senteval.eval_engine.SE(params_senteval, batcher)
+    train_results = te.train(training_tasks)
+    test_results = ee.eval(testing_tasks)
+    print("train results:")
+    print(train_results)
+    print("test_results:")
+    print(test_results)
