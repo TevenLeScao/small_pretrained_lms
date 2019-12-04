@@ -141,7 +141,7 @@ class EmoContext(object):
                 sub_list = [list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data[data_type][i])))\
                             for i in range(3)]
                 label_list = [self.dict_label[value] for value in self.data[data_type][3]]
-                self.data_subwords[data_type] = list(zip(sub_list[0],sub_list[1],sub_list[2], label_list))
+                self.data_subwords[data_type] = list(zip(sub_list[0], sub_list[1], sub_list[2], label_list))
             print(len(self.data_subwords['train'][0]))
             print(len(self.data['dev'][0]))
 
@@ -181,28 +181,31 @@ class EmoContext(object):
                     enc1 = batcher(params, batch1)
                     enc2 = batcher(params, batch2)
                     enc3 = batcher(params, batch3)
-                    enc_input.append(np.hstack((enc1, enc2, enc3, enc1 * enc2, enc2 * enc3, enc3 * enc1)))
+                    enc_input.append(torch.cat((enc1, enc2, enc3, enc1 * enc2, enc2 * enc3, enc3 * enc1), dim=1))
                 if ii % 200 == 0:
                     print("PROGRESS (encoding %s): %.2f%%" %(key, 100 * ii / n_labels))
-            labels = np.array([self.dict_label[y] for y in labels])
-            self.examples[key] = (np.vstack(enc_input), labels)
+            labels = torch.LongTensor([self.dict_label[y] for y in labels])
+            self.examples[key] = (torch.cat(enc_input, dim=0), labels)
         sentence_dim = self.examples['train'][0].shape[1]
 
         classifier = StandardMLP(params, sentence_dim, self.n_classes)
         train_data = self.examples['train']
         train_data = [(train_data[0][i], train_data[1][i]) for i in range(train_data[0].shape[0])]
         for embed, targets in batch_iter(train_data, params.batch_size):
-            embed = torch.tensor(embed)
+            embed = torch.stack(embed)
             targets = torch.LongTensor(targets)
+            if GPU:
+                embed = embed.cuda()
+                targets = targets.cuda()
             predictions = classifier(embed)
             loss = classifier.predictions_to_loss(predictions, targets)
             loss.backward()
             classifier.step()
 
         dev_embed, dev_labels = self.examples['dev']
-        dev_embed, dev_labels = torch.tensor(dev_embed), torch.LongTensor(dev_labels)
+        dev_embed, dev_labels = dev_embed, dev_labels
         test_embed, test_labels = self.examples['test']
-        test_embed, test_labels = torch.tensor(test_embed), torch.LongTensor(test_labels)
+        test_embed, test_labels = test_embed, test_labels
 
         with torch.no_grad():
             dev_loss = classifier.predictions_to_loss(classifier(dev_embed), dev_labels).item()
