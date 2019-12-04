@@ -131,15 +131,15 @@ class SNLI(object):
                 model.train()
         return np.mean(epoch_losses), np.mean(epoch_accuracies)
 
-    def train(self, params, word_embedder: WordEmbedder, sentence_encoder: SentenceEncoder):
+    def train(self, params):
         start_time = time()
         training_history = {'time': [], 'train_loss': [], 'train_acc': [], 'valid_loss': [], 'valid_acc': []}
         best_valid = 0
         start_epoch = 0
-        classifier = StandardMLP(params, sentence_encoder.sentence_dim * 4, self.n_classes)
+        classifier = StandardMLP(params, params.sentence_encoder.sentence_dim * 4, self.n_classes)
         if GPU:
             classifier = classifier.cuda()
-        models = {"embedder": word_embedder, "encoder": sentence_encoder, "classifier": classifier}
+        models = {"embedder": params.word_embedder, "encoder": params.sentence_encoder, "classifier": classifier}
         if tconfig.load_models:
             try:
                 for key, model in models.items():

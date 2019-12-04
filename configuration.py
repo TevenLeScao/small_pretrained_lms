@@ -3,7 +3,7 @@ import torch
 
 SANITY = False
 GPU = torch.cuda.is_available()
-EXPERIMENT_NAME = "first_long_training"
+EXPERIMENT_NAME = "moved_models"
 
 
 class Paths:

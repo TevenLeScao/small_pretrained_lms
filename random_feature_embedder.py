@@ -36,9 +36,6 @@ def batcher(params, batch):
         # normalize the batch
         batch = word_lists_to_lines(batch)
 
-    global word_embedder
-    global sentence_embedder
-
     if vconfig.subwords:
         #TODO: cleanup the reader loading. This code might be risky, as we use small batches
         if not params.reader:
@@ -53,7 +50,7 @@ def batcher(params, batch):
     feature_vectors, masks = prepare_sentences(lines, params.vocab)
 
     with torch.no_grad():
-        sentence_vectors = sentence_embedder(word_embedder(feature_vectors, masks), masks)
+        sentence_vectors = params.sentence_encoder(params.word_embedder(feature_vectors, masks), masks)
 
     return sentence_vectors
 
@@ -69,11 +66,13 @@ logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 if __name__ == "__main__":
     word_embedder = TransformerWordEmbedder()
     print(word_embedder)
-    sentence_embedder = RandomLSTM()
+    sentence_encoder = RandomLSTM()
     if GPU:
         word_embedder = word_embedder.cuda()
-        sentence_embedder = sentence_embedder.cuda()
-    te = senteval.train_engine.TrainEngine(params_senteval, word_embedder, sentence_embedder, prepare)
+        sentence_encoder = sentence_encoder.cuda()
+    params_senteval["sentence_encoder"] = sentence_encoder
+    params_senteval["word_embedder"] = word_embedder
+    te = senteval.train_engine.TrainEngine(params_senteval, prepare)
     training_tasks = ['EmoContext']
     testing_tasks = ['EmoContext']
     ee = senteval.eval_engine.SE(params_senteval, batcher)

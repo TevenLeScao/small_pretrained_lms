@@ -16,7 +16,7 @@ from configuration import Paths
 
 
 class TrainEngine(object):
-    def __init__(self, params, word_embedder: WordEmbedder, sentence_encoder: SentenceEncoder, prepare=None):
+    def __init__(self, params, prepare=None):
         # parameters
         params = dotdict(params)
         params.usepytorch = True if 'usepytorch' not in params else params.usepytorch
@@ -34,8 +34,6 @@ class TrainEngine(object):
         self.params = params
 
         # batcher and prepare
-        self.word_embedder = word_embedder
-        self.sentence_encoder = sentence_encoder
         self.prepare = prepare if prepare else lambda x, y: None
 
         self.list_tasks = ['SNLI', 'ImageCaptionRetrieval', 'STS12', 'STS13',
@@ -97,9 +95,9 @@ class TrainEngine(object):
         # elif name in ['STS12', 'STS13', 'STS14', 'STS15', 'STS16']:
         #     self.params.task_path += '/downstream/STS/{}'.format(name + '-en-test')
         #     self.trainer = eval(name + 'Eval')(self.params.task_path, seed=self.params.seed)
-        # elif name == 'ImageCaptionRetrieval':
-        #     self.params.task_path += '/downstream/COCO'
-        #     self.trainer = ImageCaptionRetrievalEval(self.params.task_path, seed=self.params.seed)
+        elif name == 'ImageCaptionRetrieval':
+            self.params.task_path += '/downstream/COCO'
+            self.trainer = ImageCaptionRetrievalEval(self.params.task_path, seed=self.params.seed)
 
         # Probing Tasks
         # elif name == 'Length':
@@ -139,6 +137,6 @@ class TrainEngine(object):
 
         self.trainer.do_train_prepare(self.params, self.prepare)
 
-        self.results = self.trainer.train(self.params, self.word_embedder, self.sentence_encoder)
+        self.results = self.trainer.train(self.params)
 
         return self.results
