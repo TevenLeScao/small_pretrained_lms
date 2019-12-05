@@ -23,6 +23,7 @@ from senteval.sst import SSTEval
 from senteval.rank import ImageCaptionRetrievalEval
 from senteval.probing import *
 from senteval.emocontext import EmoContext
+from senteval.hateval import HatEval
 
 
 class SE(object):
@@ -53,7 +54,8 @@ class SE(object):
                            'STS14', 'STS15', 'STS16',
                            'Length', 'WordContent', 'Depth', 'TopConstituents',
                            'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
-                           'OddManOut', 'CoordinationInversion', 'EmoContext']
+                           'OddManOut', 'CoordinationInversion', 'EmoContext',
+                           'HatEval']
 
     def eval(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
@@ -108,6 +110,9 @@ class SE(object):
         elif name == 'EmoContext':
             self.params.task_path += '/downstream/EmoContext'
             self.evaluation = EmoContext(self.params.task_path, seed=self.params.seed)
+        elif name == 'HatEval':
+            self.params.task_path += '/downstream/HatEval'
+            self.evaluation = HatEval(self.params.task_path, seed=self.params.seed)
 
         # Probing Tasks
         elif name == 'Length':

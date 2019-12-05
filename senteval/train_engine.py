@@ -1,6 +1,7 @@
 from senteval.binary import CREval, MREval, MPQAEval, SUBJEval
 from senteval.snli import SNLI
 from senteval.emocontext import EmoContext
+from senteval.hateval import HatEval
 from senteval.trec import TRECEval
 from senteval.sick import SICKRelatednessEval, SICKEntailmentEval
 from senteval.mrpc import MRPCEval
@@ -40,7 +41,7 @@ class TrainEngine(object):
                            'STS14', 'STS15', 'STS16',
                            'Length', 'WordContent', 'Depth', 'TopConstituents',
                            'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
-                           'OddManOut', 'CoordinationInversion', 'EmoContext']
+                           'OddManOut', 'CoordinationInversion', 'EmoContext', 'HatEval']
 
     def train(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
@@ -57,6 +58,10 @@ class TrainEngine(object):
         if name == "EmoContext":
             self.params.task_path += '/downstream/{}'.format(name)
             self.trainer = EmoContext(self.params.task_path, seed=self.params.seed)
+
+        if name == "HatEval":
+            self.params.task_path += '/downstream/{}'.format(name)
+            self.trainer = HatEval(self.params.task_path, seed=self.params.seed)
 
         # TODO: convert other tasks
         # if name == 'CR':
