@@ -57,8 +57,8 @@ class TrainConfig:
     accumulate = 8
     min_lr = 0.00001
     if SANITY:
-        max_epoch = 2
+        max_epoch = 10
         load_models = False
     else:
         max_epoch = 100
-        load_models = True
+        load_models = False

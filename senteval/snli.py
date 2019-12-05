@@ -136,6 +136,8 @@ class SNLI(object):
         training_history = {'time': [], 'train_loss': [], 'train_acc': [], 'valid_loss': [], 'valid_acc': []}
         best_valid = 0
         start_epoch = 0
+        # to make sure we reload with the proper updated learning rate
+        restart_memory = 0
         classifier = StandardMLP(params, params.sentence_encoder.sentence_dim * 4, self.n_classes)
         if GPU:
             classifier = classifier.cuda()
@@ -171,15 +173,18 @@ class SNLI(object):
             json.dump(training_history, open(osp.join(params.current_xp_folder, "training_history.json"), 'w'))
             if valid_acc > best_valid:
                 best_valid = valid_acc
+                restart_memory = 0
                 for key, model in models.items():
                     model.save(osp.join(params.current_xp_folder, key))
             else:
-                print("updating LR")
+                print("updating LR and re-loading model")
+                restart_memory += 1
                 for key, model in models.items():
-                    model.load_params(osp.join(params.current_xp_folder, key))
-                    model.update_learning_rate(tconfig.lr_decay)
-                    if model.get_current_learning_rate() < tconfig.min_lr:
-                        break
+                    model.load_params(os.path.join(params.current_xp_folder, key))
+                    model.update_learning_rate(tconfig.lr_decay ** restart_memory)
+                if max(model.get_current_learning_rate() for model in models.values()) < tconfig.min_lr:
+                    print("min lr {} reached, stopping training".format(tconfig.min_lr))
+                    break
 
     def run(self, params, batcher):
         self.X, self.y = {}, {}
