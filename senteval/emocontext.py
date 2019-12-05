@@ -164,7 +164,7 @@ class EmoContext(object):
                 restart_memory += 1
                 for key, model in models.items():
                     model.load_params(os.path.join(params.current_xp_folder, key))
-                    model.update_learning_rate(tconfig.lr_decay ** restart_memory)Z
+                    model.update_learning_rate(tconfig.lr_decay ** restart_memory)
                 if max(model.get_current_learning_rate() for model in models.values()) < tconfig.min_lr:
                     print("min lr {} reached, stopping training".format(tconfig.min_lr))
                     break
