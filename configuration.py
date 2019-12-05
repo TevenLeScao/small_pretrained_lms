@@ -3,7 +3,7 @@ import torch
 
 SANITY = False
 GPU = torch.cuda.is_available()
-EXPERIMENT_NAME = "moved_models"
+EXPERIMENT_NAME = "train_on_emocontext"
 
 
 class Paths:
@@ -14,6 +14,7 @@ class Paths:
     semeval_data_path = osp.join(data_path, "semeval")
     experiment_path = osp.join(project_path, "experiments", EXPERIMENT_NAME)
     results_path = osp.join(project_path, "results", EXPERIMENT_NAME)
+    direct_reload_path = osp.join(project_path, "experiments", "test_1", "SNLI", "first_xp")
 
 
 class VocabConfig:
@@ -30,24 +31,18 @@ class VocabConfig:
 
 class ModelConfig:
     if SANITY:
-        # model = "transformer"
-        # depth = 1
-        # width = 8
-        # d_ff = 8
-        # n_head = 2
-        # sentence_width = 16
-        model = "bert"
-        depth = 8
-        width = 512
-        d_ff = 1024
-        n_head = 8
-        sentence_width = 1024
-    else:
         model = "bert"
         depth = 1
         width = 64
         d_ff = 64
         n_head = 1
+        sentence_width = 1024
+    else:
+        model = "bert"
+        depth = 6
+        width = 256
+        d_ff = 512
+        n_head = 8
         sentence_width = 1024
 
 

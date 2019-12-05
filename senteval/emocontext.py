@@ -161,8 +161,8 @@ class EmoContext(object):
                 for key, model in models.items():
                     model.load_params(os.path.join(params.current_xp_folder, key))
                     model.update_learning_rate(tconfig.lr_decay)
-                    if model.get_current_learning_rate() < tconfig.min_lr:
-                        break
+                if max(model.get_current_learning_rate() for model in models.values()) < tconfig.min_lr:
+                    break
 
     def run(self, params, batcher):
         self.examples = {}
