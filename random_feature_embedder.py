@@ -56,8 +56,8 @@ def batcher(params, batch):
 
 
 # Set params for SentEval
-params_senteval = {'task_path': Paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
-params_senteval['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
+base_params = {'task_path': Paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
+base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
                                  'tenacity': 3, 'epoch_size': 2}
 
 # Set up logger
@@ -70,15 +70,20 @@ if __name__ == "__main__":
     if GPU:
         word_embedder = word_embedder.cuda()
         sentence_encoder = sentence_encoder.cuda()
-    params_senteval["sentence_encoder"] = sentence_encoder
-    params_senteval["word_embedder"] = word_embedder
-    te = senteval.train_engine.TrainEngine(params_senteval, prepare)
+    base_params["sentence_encoder"] = sentence_encoder
+    base_params["word_embedder"] = word_embedder
+    te = senteval.train_engine.TrainEngine(base_params, prepare)
     training_tasks = ['EmoContext']
     testing_tasks = ['EmoContext']
-    ee = senteval.eval_engine.SE(params_senteval, batcher)
-    train_results = te.train(training_tasks)
-    test_results = ee.eval(testing_tasks)
-    print("train results:")
-    print(train_results)
-    print("test_results:")
-    print(test_results)
+    ee = senteval.eval_engine.SE(base_params, batcher)
+    if training_tasks:
+        train_results = te.train(training_tasks)
+        print("train results:")
+        print(train_results)
+    elif Paths.direct_reload_path:
+        word_embedder.load_params(osp.join(Paths.direct_reload_path, "embedder"))
+        sentence_encoder.load_params(osp.join(Paths.direct_reload_path, "encoder"))
+    if testing_tasks:
+        test_results = ee.eval(testing_tasks)
+        print("test_results:")
+        print(test_results)
