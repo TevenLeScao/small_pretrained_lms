@@ -14,7 +14,7 @@ class Paths:
     semeval_data_path = osp.join(data_path, "semeval")
     experiment_path = osp.join(project_path, "experiments", EXPERIMENT_NAME)
     results_path = osp.join(project_path, "results", EXPERIMENT_NAME)
-    direct_reload_path = osp.join(project_path, "experiments", "test_1", "SNLI", "first_xp")
+    # direct_reload_path = osp.join(project_path, "experiments", "test_1", "SNLI", "first_xp")
 
 
 class VocabConfig:
@@ -51,9 +51,7 @@ class TrainConfig:
     weight_decay = 0.00001
     batch_size = 64
     clip_grad = 5.0
-    lr_decay = 0.7
-    patience = 3
-    max_num_trial = 3
+    lr_decay = 0.6
     accumulate = 8
     min_lr = 0.00001
     if SANITY:

@@ -53,7 +53,7 @@ class Vocab(object):
 
     @staticmethod
     def from_corpus(corpus, size, freq_cutoff=2):
-        vocab_entry = Vocab()
+        new_vocab = Vocab()
 
         word_freq = Counter(chain(*corpus))
 
@@ -64,8 +64,24 @@ class Vocab(object):
         top_k_words = sorted(valid_words, key=lambda w: word_freq[w], reverse=True)[:size]
 
         for word in top_k_words:
-            vocab_entry.add(word)
-            if len(vocab_entry) >= size:
+            new_vocab.add(word)
+            if len(new_vocab) >= size:
                 break
 
-        return vocab_entry
+        return new_vocab
+
+    def add_corpus(self, corpus, size, freq_cutoff=2):
+        word_freq = Counter(chain(*corpus))
+
+        valid_words = [w for w, v in word_freq.items() if v >= freq_cutoff]
+        print(
+            f'number of word types in aligned data: {len(word_freq)}, number of word types w/ frequency >= {freq_cutoff}: {len(valid_words)}')
+
+        top_k_words = sorted(valid_words, key=lambda w: word_freq[w], reverse=True)[:size]
+
+        for word in top_k_words:
+            self.add(word)
+            if len(self) >= size:
+                break
+
+        return self

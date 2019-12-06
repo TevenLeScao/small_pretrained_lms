@@ -16,12 +16,17 @@ def change_pooler(bert_model: BertModel, pooler: SentenceEncoder):
 class TransformerWordEmbedder(WordEmbedder):
 
     def __init__(self, vocab_size=vconfig.vocab_size, depth=mconfig.depth, width=mconfig.width, n_head=mconfig.n_head,
-                 d_ff=mconfig.d_ff):
+                 d_ff=mconfig.d_ff, load_bert=False):
         super(TransformerWordEmbedder, self).__init__()
-        self.config = BertConfig(vocab_size, width, depth, n_head, d_ff)
-        self.bert = BertModel(self.config)
+        if load_bert:
+            self.config = BertConfig.from_pretrained('bert-base-uncased')
+            self.bert = BertModel.from_pretrained('bert-base-uncased')
+        else:
+            self.config = BertConfig(vocab_size, width, depth, n_head, d_ff)
+            self.bert = BertModel(self.config)
         self.embedder = self.bert
         self.optimizer = torch.optim.Adam(self.parameters(), lr=tconfig.lr, weight_decay=tconfig.weight_decay)
+        self.pretrained_bert = load_bert
 
     def forward(self, sentences, sent_mask):
         return self.bert(input_ids=sentences, attention_mask=sent_mask)[0]
@@ -32,3 +37,4 @@ class TransformerWordEmbedder(WordEmbedder):
         formatted_model.bert.pooler = pooler
         formatted_model.classifier = classifier
         return formatted_model
+

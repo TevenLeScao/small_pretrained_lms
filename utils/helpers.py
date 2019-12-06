@@ -80,7 +80,6 @@ def lines_to_word_lists(lines):
 # If subwords already exist, load them, create them otherwise
 def create_subwords(lines, task_folder, task_name):
     subwords_folder = osp.join(task_folder, "vocab")
-    print(subwords_folder)
     sub_model_path = osp.join(subwords_folder, "{}.{}.model".format(task_name, vconfig.subwords_model_type))
     try:
         reader = subwords.SubwordReader(sub_model_path)

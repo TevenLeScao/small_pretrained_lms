@@ -50,7 +50,7 @@ class HatEval(object):
         return prepare(params, self.samples)
 
     def do_train_prepare(self, params, prepare):
-        return prepare(params, self.training_samples)
+        return prepare(params, self.training_samples, train=True)
 
     def loadFiles(self, path: str, file_type: str):
         assert os.path.isdir(path), "Directory %s not found" % path
