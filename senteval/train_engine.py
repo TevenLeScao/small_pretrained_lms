@@ -142,10 +142,6 @@ class TrainEngine(object):
 
         self.trainer.do_train_prepare(self.params, self.prepare)
 
-        print(self.params.keys())
-
         self.results = self.trainer.train(self.params)
-
-        print(self.params.keys())
 
         return self.results

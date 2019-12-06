@@ -86,7 +86,7 @@ class SNLI(object):
         return prepare(params, self.samples)
 
     def do_train_prepare(self, params, prepare):
-        return prepare(params, self.training_samples, train=True)
+        return prepare(params, self.training_samples)
 
     def loadFile(self, fpath):
         with codecs.open(fpath, 'rb', 'latin-1') as f:

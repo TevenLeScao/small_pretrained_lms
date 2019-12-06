@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
     te = senteval.train_engine.TrainEngine(base_params, train_prepare)
     ee = senteval.eval_engine.SE(base_params, batcher, eval_prepare)
-    training_tasks = ['EmoContext']
+    training_tasks = ['SNLI']
     testing_tasks = ['EmoContext']
 
     if training_tasks:
