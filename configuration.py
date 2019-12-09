@@ -3,7 +3,7 @@ import torch
 
 SANITY = False
 GPU = torch.cuda.is_available()
-EXPERIMENT_NAME = "SNLI2EmoHateSNLI"
+EXPERIMENT_NAME = "SNLI2EmoHateSNLI_4096"
 
 
 class Paths:
@@ -43,7 +43,7 @@ class ModelConfig:
         width = 256
         d_ff = 512
         n_head = 8
-        sentence_width = 1024
+        sentence_width = 4096
 
 
 class TrainConfig:
@@ -59,4 +59,4 @@ class TrainConfig:
         resume_training = False
     else:
         max_epoch = 100
-        resume_training = False
+        resume_training = True

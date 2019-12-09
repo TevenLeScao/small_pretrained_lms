@@ -103,8 +103,8 @@ if __name__ == "__main__":
 
     base_params["sentence_encoder"] = sentence_encoder
     base_params["word_embedder"] = word_embedder
-    training_tasks = []
-    testing_tasks = ['EmoContext']
+    training_tasks = ['SNLI']
+    testing_tasks = ['EmoContext', 'SNLI', 'HatEval']
 
     if training_tasks:
         te = senteval.train_engine.TrainEngine(base_params, train_prepare)
