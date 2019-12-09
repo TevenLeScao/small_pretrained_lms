@@ -142,7 +142,7 @@ class SNLI(object):
         if GPU:
             classifier = classifier.cuda()
         models = {"embedder": params.word_embedder, "encoder": params.sentence_encoder, "classifier": classifier}
-        if tconfig.load_models:
+        if tconfig.resume_training:
             try:
                 for key, model in models.items():
                     print("reloaded {}".format(key))
@@ -202,15 +202,15 @@ class SNLI(object):
                 batch2 = input2[ii:ii + params.batch_size]
 
                 if len(batch1) == len(batch2) and len(batch1) > 0:
-                    enc1 = batcher(params, batch1)
-                    enc2 = batcher(params, batch2)
+                    enc1 = batcher(params, batch1).cpu()
+                    enc2 = batcher(params, batch2).cpu()
                     enc_input.append(np.hstack((enc1, enc2, enc1 * enc2,
                                                 np.abs(enc1 - enc2))))
                 if (ii * params.batch_size) % (20000 * params.batch_size) == 0:
                     logging.info("PROGRESS (encoding): %.2f%%" %
                                  (100 * ii / n_labels))
             self.X[key] = np.vstack(enc_input)
-            self.y[key] = [self.dico_label[y] for y in mylabels]
+            self.y[key] = np.array([self.dico_label[y] for y in mylabels])
 
         config = {'nclasses': 3, 'seed': self.seed,
                   'usepytorch': params.usepytorch,

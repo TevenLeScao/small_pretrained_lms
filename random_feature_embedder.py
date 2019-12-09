@@ -81,7 +81,7 @@ def batcher(params, batch):
 
 
 # Set params for SentEval
-base_params = {'task_path': Paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
+base_params = {'base_path': Paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
 base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
                              'tenacity': 3, 'epoch_size': 2}
 
@@ -89,6 +89,7 @@ base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
 if __name__ == "__main__":
+
     word_embedder = TransformerWordEmbedder()
     sentence_encoder = RandomLSTM()
     try:
@@ -96,25 +97,23 @@ if __name__ == "__main__":
         sentence_encoder.load_params(osp.join(Paths.direct_reload_path, "encoder"))
     except (AttributeError, FileNotFoundError):
         pass
-    print(word_embedder)
     if GPU:
         word_embedder = word_embedder.cuda()
         sentence_encoder = sentence_encoder.cuda()
 
     base_params["sentence_encoder"] = sentence_encoder
     base_params["word_embedder"] = word_embedder
-
-    te = senteval.train_engine.TrainEngine(base_params, train_prepare)
-    ee = senteval.eval_engine.SE(base_params, batcher, eval_prepare)
-    training_tasks = ['SNLI']
+    training_tasks = []
     testing_tasks = ['EmoContext']
 
     if training_tasks:
+        te = senteval.train_engine.TrainEngine(base_params, train_prepare)
         train_results = te.train(training_tasks)
         print("train results:")
         print(train_results)
 
     if testing_tasks:
+        ee = senteval.eval_engine.SE(base_params, batcher, eval_prepare)
         test_results = ee.eval(testing_tasks)
         print("test_results:")
         print(test_results)

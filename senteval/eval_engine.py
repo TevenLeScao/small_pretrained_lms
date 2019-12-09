@@ -12,7 +12,11 @@ Generic sentence evaluation scripts wrapper
 '''
 from __future__ import absolute_import, division, unicode_literals
 
-import utils.helpers
+import json
+
+from configuration import Paths
+
+from utils.helpers import dotdict, makedirs
 from senteval.binary import CREval, MREval, MPQAEval, SUBJEval
 from senteval.snli import SNLI
 from senteval.trec import TRECEval
@@ -29,7 +33,7 @@ from senteval.hateval import HatEval
 class SE(object):
     def __init__(self, params, batcher, prepare=None):
         # parameters
-        params = utils.helpers.dotdict(params)
+        params = dotdict(params)
         params.usepytorch = True if 'usepytorch' not in params else params.usepytorch
         params.seed = 1111 if 'seed' not in params else params.seed
 
@@ -66,89 +70,93 @@ class SE(object):
 
         # Original SentEval tasks
         if name == 'CR':
-            self.params.task_path += '/downstream/{}'.format(name)
+            self.params.task_path = self.params.base_path + '/downstream/{}'.format(name)
             self.evaluation = CREval(self.params.task_path, seed=self.params.seed)
         elif name == 'MR':
-            self.params.task_path += '/downstream/{}'.format(name)
+            self.params.task_path = self.params.base_path + '/downstream/{}'.format(name)
             self.evaluation = MREval(self.params.task_path, seed=self.params.seed)
         elif name == 'MPQA':
-            self.params.task_path += '/downstream/{}'.format(name)
+            self.params.task_path = self.params.base_path + '/downstream/{}'.format(name)
             self.evaluation = MPQAEval(self.params.task_path, seed=self.params.seed)
         elif name == 'SUBJ':
-            self.params.task_path += '/downstream/{}'.format(name)
+            self.params.task_path = self.params.base_path + '/downstream/{}'.format(name)
             self.evaluation = SUBJEval(self.params.task_path, seed=self.params.seed)
         elif name == 'SST2':
-            self.params.task_path += '/downstream/SST/binary'
+            self.params.task_path = self.params.base_path + '/downstream/SST/binary'
             self.evaluation = SSTEval(self.params.task_path, nclasses=2, seed=self.params.seed)
         elif name == 'SST5':
-            self.params.task_path += '/downstream/SST/fine'
+            self.params.task_path = self.params.base_path + '/downstream/SST/fine'
             self.evaluation = SSTEval(self.params.task_path, nclasses=5, seed=self.params.seed)
         elif name == 'TREC':
-            self.params.task_path += '/downstream/{}'.format(name)
+            self.params.task_path = self.params.base_path + '/downstream/{}'.format(name)
             self.evaluation = TRECEval(self.params.task_path, seed=self.params.seed)
         elif name == 'MRPC':
-            self.params.task_path += '/downstream/{}'.format(name)
+            self.params.task_path = self.params.base_path + '/downstream/{}'.format(name)
             self.evaluation = MRPCEval(self.params.task_path, seed=self.params.seed)
         elif name == 'SICKRelatedness':
-            self.params.task_path += '/downstream/SICK'
+            self.params.task_path = self.params.base_path + '/downstream/SICK'
             self.evaluation = SICKRelatednessEval(self.params.task_path, seed=self.params.seed)
         elif name == 'STSBenchmark':
-            self.params.task_path += '/downstream/STS/STSBenchmark'
+            self.params.task_path = self.params.base_path + '/downstream/STS/STSBenchmark'
             self.evaluation = STSBenchmarkEval(self.params.task_path, seed=self.params.seed)
         elif name == 'SICKEntailment':
-            self.params.task_path += '/downstream/SICK'
+            self.params.task_path = self.params.base_path + '/downstream/SICK'
             self.evaluation = SICKEntailmentEval(self.params.task_path, seed=self.params.seed)
         elif name == 'SNLI':
-            self.params.task_path += '/downstream/{}'.format(name)
+            self.params.task_path = self.params.base_path + '/downstream/{}'.format(name)
             self.evaluation = SNLI(self.params.task_path, seed=self.params.seed)
         elif name in ['STS12', 'STS13', 'STS14', 'STS15', 'STS16']:
-            self.params.task_path += '/downstream/STS/{}'.format(name + '-en-test')
+            self.params.task_path = self.params.base_path + '/downstream/STS/{}'.format(name + '-en-test')
             self.evaluation = eval(name + 'Eval')(self.params.task_path, seed=self.params.seed)
         elif name == 'ImageCaptionRetrieval':
-            self.params.task_path += '/downstream/COCO'
+            self.params.task_path = self.params.base_path + '/downstream/COCO'
             self.evaluation = ImageCaptionRetrievalEval(self.params.task_path, seed=self.params.seed)
         elif name == 'EmoContext':
-            self.params.task_path += '/downstream/EmoContext'
+            self.params.task_path = self.params.base_path + '/downstream/EmoContext'
             self.evaluation = EmoContext(self.params.task_path, seed=self.params.seed)
         elif name == 'HatEval':
-            self.params.task_path += '/downstream/HatEval'
+            self.params.task_path = self.params.base_path + '/downstream/HatEval'
             self.evaluation = HatEval(self.params.task_path, seed=self.params.seed)
 
         # Probing Tasks
         elif name == 'Length':
-            self.params.task_path += '/probing'
+            self.params.task_path = self.params.base_path + '/probing'
             self.evaluation = LengthEval(self.params.task_path, seed=self.params.seed)
         elif name == 'WordContent':
-            self.params.task_path += '/probing'
+            self.params.task_path = self.params.base_path + '/probing'
             self.evaluation = WordContentEval(self.params.task_path, seed=self.params.seed)
         elif name == 'Depth':
-            self.params.task_path += '/probing'
+            self.params.task_path = self.params.base_path + '/probing'
             self.evaluation = DepthEval(self.params.task_path, seed=self.params.seed)
         elif name == 'TopConstituents':
-            self.params.task_path += '/probing'
+            self.params.task_path = self.params.base_path + '/probing'
             self.evaluation = TopConstituentsEval(self.params.task_path, seed=self.params.seed)
         elif name == 'BigramShift':
-            self.params.task_path += '/probing'
+            self.params.task_path = self.params.base_path + '/probing'
             self.evaluation = BigramShiftEval(self.params.task_path, seed=self.params.seed)
         elif name == 'Tense':
-            self.params.task_path += '/probing'
+            self.params.task_path = self.params.base_path + '/probing'
             self.evaluation = TenseEval(self.params.task_path, seed=self.params.seed)
         elif name == 'SubjNumber':
-            self.params.task_path += '/probing'
+            self.params.task_path = self.params.base_path + '/probing'
             self.evaluation = SubjNumberEval(self.params.task_path, seed=self.params.seed)
         elif name == 'ObjNumber':
-            self.params.task_path += '/probing'
+            self.params.task_path = self.params.base_path + '/probing'
             self.evaluation = ObjNumberEval(self.params.task_path, seed=self.params.seed)
         elif name == 'OddManOut':
-            self.params.task_path += '/probing'
+            self.params.task_path = self.params.base_path + '/probing'
             self.evaluation = OddManOutEval(self.params.task_path, seed=self.params.seed)
         elif name == 'CoordinationInversion':
-            self.params.task_path += '/probing'
+            self.params.task_path = self.params.base_path + '/probing'
             self.evaluation = CoordinationInversionEval(self.params.task_path, seed=self.params.seed)
 
         self.params.current_task = name
-        self.evaluation.do_prepare(self.params, self.prepare)
+        self.params.current_xp_folder = os.path.join(Paths.results_path, name)
+        makedirs(self.params.current_xp_folder)
+        output_json_file = os.path.join(self.params.current_xp_folder, "results.json")
 
+        self.evaluation.do_prepare(self.params, self.prepare)
         self.results = self.evaluation.run(self.params, self.batcher)
+        json.dump(self.results, open(output_json_file, "w"), indent=2, ensure_ascii=False)
 
         return self.results

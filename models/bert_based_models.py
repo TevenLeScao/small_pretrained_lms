@@ -24,6 +24,12 @@ class TransformerWordEmbedder(WordEmbedder):
         else:
             self.config = BertConfig(vocab_size, width, depth, n_head, d_ff)
             self.bert = BertModel(self.config)
+        self.embedding_size = self.config.hidden_size
+        self.vocab_size = self.config.vocab_size
+        self.depth = self.config.num_hidden_layers
+        self.n_head = self.config.num_attention_heads
+        self.d_ff = self.config.intermediate_size
+
         self.embedder = self.bert
         self.optimizer = torch.optim.Adam(self.parameters(), lr=tconfig.lr, weight_decay=tconfig.weight_decay)
         self.pretrained_bert = load_bert

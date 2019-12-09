@@ -128,7 +128,7 @@ class ImageCaptionRetrievalEval(object):
         if GPU:
             classifier = classifier.cuda()
         models = {"embedder": params.word_embedder, "encoder": params.sentence_encoder, "classifier": classifier}
-        if tconfig.load_models:
+        if tconfig.resume_training:
             try:
                 for key, model in models.items():
                     print("reloaded {}".format(key))

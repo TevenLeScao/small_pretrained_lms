@@ -42,7 +42,7 @@ class EmoContext(object):
                      "dev": list(zip(*dev_sorted)),
                      "test": list(zip(*test_sorted))}
 
-        self.dict_label = {'others': 0, 'happy': 1, 'sad': 2, 'angry' : 3}
+        self.dict_label = {'others': 0, 'happy': 1, 'sad': 2, 'angry': 3}
         self.n_classes = len(self.dict_label)
         self.data_source = self.data
         self.samples = train1 + train2 + train3 + dev1 + dev2 + dev3 + test1 + test2 + test3
@@ -124,7 +124,7 @@ class EmoContext(object):
         if GPU:
             classifier = classifier.cuda()
         models = {"embedder": params.word_embedder, "encoder": params.sentence_encoder, "classifier": classifier}
-        if tconfig.load_models:
+        if tconfig.resume_training:
             try:
                 for key, model in models.items():
                     print("reloaded {}".format(key))
@@ -218,10 +218,10 @@ class EmoContext(object):
             test_scores = classifier(test_embed)
             dev_loss = classifier.predictions_to_loss(dev_scores, dev_labels).item()
             dev_acc = classifier.predictions_to_acc(dev_scores, dev_labels).item()
-            dev_f1 = classifier.predictions_to_f1(dev_scores, dev_labels).item()
+            dev_f1 = classifier.emocontext_f1(dev_scores, dev_labels, included_classes=(1, 2, 3))
             test_loss = classifier.predictions_to_loss(test_scores, test_labels).item()
             test_acc = classifier.predictions_to_acc(test_scores, test_labels).item()
-            test_f1 = classifier.predictions_to_f1(test_scores, test_labels).item()
+            test_f1 = classifier.emocontext_f1(test_scores, test_labels, included_classes=(1, 2, 3))
 
         return {'devacc': dev_acc, 'acc': test_acc,
                 'devloss': dev_loss, 'loss': test_loss,

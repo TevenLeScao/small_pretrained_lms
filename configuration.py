@@ -3,7 +3,7 @@ import torch
 
 SANITY = False
 GPU = torch.cuda.is_available()
-EXPERIMENT_NAME = "train_on_emocontext"
+EXPERIMENT_NAME = "SNLI2EmoHateSNLI"
 
 
 class Paths:
@@ -14,7 +14,7 @@ class Paths:
     semeval_data_path = osp.join(data_path, "semeval")
     experiment_path = osp.join(project_path, "experiments", EXPERIMENT_NAME)
     results_path = osp.join(project_path, "results", EXPERIMENT_NAME)
-    # direct_reload_path = osp.join(project_path, "experiments", "test_1", "SNLI", "first_xp")
+    direct_reload_path = osp.join(experiment_path, "SNLI")
 
 
 class VocabConfig:
@@ -56,7 +56,7 @@ class TrainConfig:
     min_lr = 0.00001
     if SANITY:
         max_epoch = 10
-        load_models = False
+        resume_training = False
     else:
         max_epoch = 100
-        load_models = False
+        resume_training = False

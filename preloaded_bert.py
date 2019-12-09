@@ -34,18 +34,11 @@ def batcher(params, batch):
         # normalize the batch
         batch = word_lists_to_lines(batch)
 
-    if vconfig.subwords:
-        #TODO: cleanup the reader loading. This code might be risky, as we use small batches
-        if not params.reader:
-            reader = create_subwords(batch, params.task_path, params.current_task)
-            params.reader = reader
-        lines = list(params.reader.lines_to_subwords(batch))
-    else:
-        #TODO: apply a vocabulary
-        lines = lines_to_word_lists(batch)
+    sents = [params.tokenizer.tokenize(line) for line in batch]
+
     if not params.vocab:
         raise KeyError("no vocab in params !")
-    feature_vectors, masks = prepare_sentences(lines, params.vocab)
+    feature_vectors, masks = prepare_sentences(sents, params.vocab)
 
     with torch.no_grad():
         sentence_vectors = params.sentence_encoder(params.word_embedder(feature_vectors, masks), masks)
@@ -54,7 +47,7 @@ def batcher(params, batch):
 
 
 # Set params for SentEval
-base_params = {'task_path': Paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
+base_params = {'base_path': Paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
 base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
                                  'tenacity': 3, 'epoch_size': 2}
 
@@ -62,10 +55,10 @@ base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
 if __name__ == "__main__":
+
     word_embedder = TransformerWordEmbedder(load_bert=True)
-    sentence_encoder = RandomLSTM()
+    sentence_encoder = RandomLSTM(word_dim=word_embedder.embedding_size)
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    print(word_embedder)
     if GPU:
         word_embedder = word_embedder.cuda()
         sentence_encoder = sentence_encoder.cuda()
@@ -76,7 +69,7 @@ if __name__ == "__main__":
     base_params["vocab"] = tokenizer.vocab
 
     ee = senteval.eval_engine.SE(base_params, batcher)
-    testing_tasks = ['EmoContext']
+    testing_tasks = ['EmoContext', 'HatEval', 'SNLI']
 
     if testing_tasks:
         test_results = ee.eval(testing_tasks)

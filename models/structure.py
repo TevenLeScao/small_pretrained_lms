@@ -136,5 +136,14 @@ class StandardMLP(GeneralModel):
         predictions = predictions.max(dim=1)[1]
         return f1_score(target, predictions, average='micro')
 
+    def emocontext_f1(self, predictions, target, included_classes=(1, 2, 3)):
+        predictions = predictions.max(dim=1)[1]
+        true_pos = sum(((predictions == in_class) * (target == in_class)).sum().item() for in_class in included_classes)
+        total_preds = sum((predictions == in_class).sum().item() for in_class in included_classes)
+        total_targets = sum((target == in_class).sum().item() for in_class in included_classes)
+        precision = true_pos / total_preds
+        recall = true_pos / total_targets
+        return 2 * precision * recall / (precision + recall)
+
     def main_module(self):
         return self.mlp
