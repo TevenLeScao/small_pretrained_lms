@@ -7,7 +7,7 @@ import json
 
 from models.sentence_encoders import SentenceEncoder
 from models.structure import WordEmbedder, StandardMLP
-from utils.helpers import\
+from utils.helpers import \
     prepare_sentences, batch_iter, word_lists_to_lines, lines_to_word_lists, progress_bar_msg, update_training_history
 from utils.progress_bar import progress_bar
 from configuration import SANITY, GPU, TrainConfig as tconfig
@@ -39,8 +39,8 @@ class EmoContext(object):
                          "test": list(zip(*test_sorted[:100]))}
         else:
             self.data = {"train": list(zip(*train_sorted)),
-                     "dev": list(zip(*dev_sorted)),
-                     "test": list(zip(*test_sorted))}
+                         "dev": list(zip(*dev_sorted)),
+                         "test": list(zip(*test_sorted))}
 
         self.dict_label = {'others': 0, 'happy': 1, 'sad': 2, 'angry': 3}
         self.n_classes = len(self.dict_label)
@@ -55,16 +55,16 @@ class EmoContext(object):
         return prepare(params, self.training_samples)
 
     def loadFiles(self, path: str, file_type: str):
-        assert os.path.isdir(path), "Directory %s not found"%path
+        assert os.path.isdir(path), "Directory %s not found" % path
         assert file_type in ["train", "dev", "test"], "File type must be 'train', 'dev' or 'test'"
 
-        s1 = open(os.path.join(path, "s1."+file_type)).read()
+        s1 = open(os.path.join(path, "s1." + file_type)).read()
         s1 = list(lines_to_word_lists(s1))
-        s2 = open(os.path.join(path, "s2."+file_type)).read()
+        s2 = open(os.path.join(path, "s2." + file_type)).read()
         s2 = list(lines_to_word_lists(s2))
-        s3 = open(os.path.join(path, "s3."+file_type)).read()
+        s3 = open(os.path.join(path, "s3." + file_type)).read()
         s3 = list(lines_to_word_lists(s3))
-        labels = open(os.path.join(path, "label."+file_type)).read().split('\n')
+        labels = open(os.path.join(path, "label." + file_type)).read().split('\n')
 
         return s1, s2, s3, labels
 
@@ -140,7 +140,7 @@ class EmoContext(object):
             self.data_subwords = {}
             self.data_source = self.data_subwords
             for data_type in ['train', 'dev']:
-                sub_list = [list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data[data_type][i])))\
+                sub_list = [list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data[data_type][i]))) \
                             for i in range(3)]
                 label_list = [self.dict_label[value] for value in self.data[data_type][3]]
                 self.data_subwords[data_type] = list(zip(sub_list[0], sub_list[1], sub_list[2], label_list))
@@ -149,7 +149,8 @@ class EmoContext(object):
 
         for epoch in range(start_epoch, tconfig.max_epoch):
             print("epoch {}".format(epoch))
-            train_loss, train_acc = self.epoch_loop(self.data_source['train'], models.values(), params, validation=False)
+            train_loss, train_acc = self.epoch_loop(self.data_source['train'], models.values(), params,
+                                                    validation=False)
             valid_loss, valid_acc = self.epoch_loop(self.data_source['dev'], models.values(), params, validation=True)
             elapsed_time = time() - start_time
             update_training_history(training_history, elapsed_time, train_loss, train_acc, valid_loss, valid_acc)
@@ -188,7 +189,7 @@ class EmoContext(object):
                     enc3 = batcher(params, batch3)
                     enc_input.append(torch.cat((enc1, enc2, enc3, enc1 * enc2, enc2 * enc3, enc3 * enc1), dim=1))
                 if ii % 200 == 0:
-                    print("PROGRESS (encoding %s): %.2f%%" %(key, 100 * ii / n_labels))
+                    print("PROGRESS (encoding %s): %.2f%%" % (key, 100 * ii / n_labels))
             labels = torch.LongTensor([self.dict_label[y] for y in labels])
             self.examples[key] = (torch.cat(enc_input, dim=0), labels)
         sentence_dim = self.examples['train'][0].shape[1]

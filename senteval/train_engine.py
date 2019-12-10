@@ -56,11 +56,11 @@ class TrainEngine(object):
             self.trainer = SNLI(self.params.task_path, seed=self.params.seed)
 
         if name == "EmoContext":
-            self.params.task_path = self.params.base_path + '/downstream/{}'.format(name)
+            self.params.task_path = self.params.semeval_path + '/downstream/{}'.format(name)
             self.trainer = EmoContext(self.params.task_path, seed=self.params.seed)
 
         if name == "HatEval":
-            self.params.task_path = self.params.base_path + '/downstream/{}'.format(name)
+            self.params.task_path = self.params.semeval_path + '/downstream/{}'.format(name)
             self.trainer = HatEval(self.params.task_path, seed=self.params.seed)
 
         # TODO: convert other tasks

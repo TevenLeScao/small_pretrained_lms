@@ -13,6 +13,7 @@ from utils.helpers import word_lists_to_lines, lines_to_word_lists, \
 from utils import subwords
 from models.sentence_encoders import SentenceEncoder, BOREP, RandomLSTM
 from models.bert_based_models import TransformerWordEmbedder
+from models.structure import SimpleDataParallel
 
 import senteval
 
@@ -81,9 +82,10 @@ def batcher(params, batch):
 
 
 # Set params for SentEval
-base_params = {'base_path': Paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
+base_params = {'base_path': Paths.senteval_data_path, 'semeval_path': Paths.semeval_data_path,
+               'usepytorch': True, 'kfold': 5}
 base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
-                             'tenacity': 3, 'epoch_size': 2}
+                             'tenacity': 3, 'epoch_size': 2, 'show_confusion_matrix': True}
 
 # Set up logger
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
@@ -100,7 +102,9 @@ if __name__ == "__main__":
     if GPU:
         word_embedder = word_embedder.cuda()
         sentence_encoder = sentence_encoder.cuda()
-
+        if torch.cuda.device_count() > 1:
+            print("%s GPUs found, using parallel data"%torch.cuda.device_count())
+            word_embedder = SimpleDataParallel(word_embedder, dim=0)
     base_params["sentence_encoder"] = sentence_encoder
     base_params["word_embedder"] = word_embedder
     training_tasks = ['SNLI']
