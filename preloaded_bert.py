@@ -4,19 +4,24 @@ import numpy as np
 import logging
 from os import path as osp
 import pickle
+from importlib import reload
 
 import torch
-
 from transformers import BertConfig, BertModel, BertForSequenceClassification, BertTokenizer
 
-from configuration import GPU, VocabConfig as vconfig, Paths
-from utils.helpers import word_lists_to_lines, lines_to_word_lists,\
+import configuration
+from configuration import GPU, VocabConfig as vconfig
+import paths
+from utils.helpers import word_lists_to_lines, lines_to_word_lists, \
     create_vocabulary, create_subwords, prepare_sentences
 from models.sentence_encoders import SentenceEncoder, BOREP, RandomLSTM
 from models.bert_based_models import TransformerWordEmbedder
 
 import senteval
 
+preloaded_model = "bert-base-uncased"
+configuration.EXPERIMENT_NAME = preloaded_model
+reload(paths)
 
 # SentEval prepare and batcher
 
@@ -47,9 +52,9 @@ def batcher(params, batch):
 
 
 # Set params for SentEval
-base_params = {'base_path': Paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
+base_params = {'base_path': paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
 base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
-                                 'tenacity': 3, 'epoch_size': 2}
+                             'tenacity': 3, 'epoch_size': 2}
 
 # Set up logger
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
@@ -58,7 +63,7 @@ if __name__ == "__main__":
 
     word_embedder = TransformerWordEmbedder(load_bert=True)
     sentence_encoder = RandomLSTM(word_dim=word_embedder.embedding_size)
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    tokenizer = BertTokenizer.from_pretrained(preloaded_model)
     if GPU:
         word_embedder = word_embedder.cuda()
         sentence_encoder = sentence_encoder.cuda()

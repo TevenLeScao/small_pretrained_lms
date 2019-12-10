@@ -14,7 +14,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 import json
 
-from configuration import Paths
+import paths
 
 from utils.helpers import dotdict, makedirs
 from senteval.binary import CREval, MREval, MPQAEval, SUBJEval
@@ -151,7 +151,8 @@ class SE(object):
             self.evaluation = CoordinationInversionEval(self.params.task_path, seed=self.params.seed)
 
         self.params.current_task = name
-        self.params.current_xp_folder = os.path.join(Paths.results_path, name)
+        self.params.current_xp_folder = os.path.join(paths.results_path, name)
+        print(self.params.current_xp_folder)
         makedirs(self.params.current_xp_folder)
         output_json_file = os.path.join(self.params.current_xp_folder, "results.json")
 

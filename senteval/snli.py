@@ -229,4 +229,3 @@ class SNLI(object):
         return {'devacc': devacc, 'acc': testacc,
                 'ndev': len(self.data['valid'][0]),
                 'ntest': len(self.data['test'][0])}
-

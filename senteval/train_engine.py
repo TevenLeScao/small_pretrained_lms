@@ -13,7 +13,7 @@ from senteval.probing import *
 from utils.helpers import dotdict, makedirs
 from models.structure import *
 from models.sentence_encoders import SentenceEncoder
-from configuration import Paths
+import paths
 
 
 class TrainEngine(object):
@@ -137,7 +137,7 @@ class TrainEngine(object):
         #     self.trainer = CoordinationInversionEval(self.params.task_path, seed=self.params.seed)
 
         self.params.current_task = name
-        self.params.current_xp_folder = os.path.join(Paths.experiment_path, name)
+        self.params.current_xp_folder = os.path.join(paths.experiment_path, name)
         makedirs(self.params.current_xp_folder)
         self.trainer.do_train_prepare(self.params, self.prepare)
 

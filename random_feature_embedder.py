@@ -7,7 +7,8 @@ import pickle
 
 import torch
 
-from configuration import GPU, VocabConfig as vconfig, Paths
+from configuration import GPU, VocabConfig as vconfig
+import paths
 from utils.helpers import word_lists_to_lines, lines_to_word_lists, \
     create_vocabulary, create_subwords, prepare_sentences
 from utils import subwords
@@ -81,7 +82,7 @@ def batcher(params, batch):
 
 
 # Set params for SentEval
-base_params = {'base_path': Paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
+base_params = {'base_path': paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
 base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
                              'tenacity': 3, 'epoch_size': 2}
 
@@ -93,8 +94,8 @@ if __name__ == "__main__":
     word_embedder = TransformerWordEmbedder()
     sentence_encoder = RandomLSTM()
     try:
-        word_embedder.load_params(osp.join(Paths.direct_reload_path, "embedder"))
-        sentence_encoder.load_params(osp.join(Paths.direct_reload_path, "encoder"))
+        word_embedder.load_params(osp.join(paths.direct_reload_path, "embedder"))
+        sentence_encoder.load_params(osp.join(paths.direct_reload_path, "encoder"))
     except (AttributeError, FileNotFoundError):
         pass
     if GPU:
@@ -103,8 +104,8 @@ if __name__ == "__main__":
 
     base_params["sentence_encoder"] = sentence_encoder
     base_params["word_embedder"] = word_embedder
-    training_tasks = ['SNLI']
-    testing_tasks = ['EmoContext', 'SNLI', 'HatEval']
+    training_tasks = []
+    testing_tasks = ['EmoContext', 'HatEval']
 
     if training_tasks:
         te = senteval.train_engine.TrainEngine(base_params, train_prepare)
