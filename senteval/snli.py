@@ -26,9 +26,10 @@ import torch
 from senteval.tools.validation import SplitClassifier
 
 from models.sentence_encoders import SentenceEncoder
-from models.structure import WordEmbedder, StandardMLP
+from models.structure import StandardMLP
+from models.word_embedders import WordEmbedder
 from utils.helpers import\
-    prepare_sentences, batch_iter, word_lists_to_lines, makedirs, progress_bar_msg, update_training_history
+    make_masks, batch_iter, word_lists_to_lines, makedirs, progress_bar_msg, update_training_history
 from utils.progress_bar import progress_bar
 from configuration import SANITY, GPU, TrainConfig as tconfig
 
@@ -105,8 +106,8 @@ class SNLI(object):
         word_embedder, sentence_encoder, classifier = models
         with context:
             for batch_num, (sents1, sents2, labels) in enumerate(batch_iter(list(zip(*data)), tconfig.batch_size)):
-                sents1, mask1 = prepare_sentences(sents1, params.vocab)
-                sents2, mask2 = prepare_sentences(sents2, params.vocab)
+                sents1, mask1 = make_masks(params.tokenize(sents1))
+                sents2, mask2 = make_masks(params.tokenize(sents2))
                 if GPU:
                     labels = torch.LongTensor(labels).cuda()
                 else:
@@ -166,7 +167,7 @@ class SNLI(object):
 
         for epoch in range(start_epoch, tconfig.max_epoch):
             print("epoch {}".format(epoch))
-            train_loss, train_acc = self.epoch_loop(self.data['train'], models.values(), params, validation=False, untrained_encoder=untrained_encoder)
+            train_loss, train_acc = self.epoch_loop(self.data['train'], models.values(), params, validation=False)
             valid_loss, valid_acc = self.epoch_loop(self.data['valid'], models.values(), params, validation=True)
             elapsed_time = time() - start_time
             update_training_history(training_history, elapsed_time, train_loss, train_acc, valid_loss, valid_acc)

@@ -1,12 +1,11 @@
-from typing import List
-
 import torch
 from torch import nn
 from torch.nn.parallel.distributed import DistributedDataParallel
 from sklearn.metrics import f1_score
 from utils.helpers import get_optimizer
 
-from configuration import GPU, TrainConfig as tconfig, VocabConfig as vconfig
+from configuration import GPU, TrainConfig as tconfig
+
 
 class GeneralModel(nn.Module):
 
@@ -70,20 +69,6 @@ class GeneralModel(nn.Module):
         else:
             net_struc_str = '{}'.format(self.main_module().__class__.__name__)
         return 'Network structure: {}, with parameters: {:,d}\n{}'.format(net_struc_str, n, s)
-
-
-class WordEmbedder(GeneralModel):
-
-    def __init__(self):
-        super(WordEmbedder, self).__init__()
-        self.vocab_size = vconfig.subwords_vocab_size if vconfig else vconfig.vocab_size
-        self.embedder = None
-
-    def forward(self, one_hot_sentences: torch.Tensor, sent_mask: torch.Tensor) -> torch.Tensor:
-        pass
-
-    def main_module(self):
-        return self.embedder
 
 
 def standard_mlp(params, inputdim, nclasses):

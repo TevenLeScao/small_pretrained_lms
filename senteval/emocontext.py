@@ -9,9 +9,10 @@ import copy
 from senteval.tools.validation import SplitClassifier
 
 from models.sentence_encoders import SentenceEncoder
-from models.structure import WordEmbedder, StandardMLP
+from models.structure import StandardMLP
+from models.word_embedders import WordEmbedder
 from utils.helpers import \
-    prepare_sentences, batch_iter, word_lists_to_lines, lines_to_word_lists, progress_bar_msg, update_training_history
+    make_masks, batch_iter, word_lists_to_lines, lines_to_word_lists, progress_bar_msg, update_training_history
 from utils.progress_bar import progress_bar
 from configuration import SANITY, GPU, TrainConfig as tconfig
 from contextlib import nullcontext
@@ -84,9 +85,9 @@ class EmoContext(object):
         with context:
             for batch_num, (sents1, sents2, sents3, labels) in enumerate(
                     batch_iter(data, tconfig.batch_size)):
-                sents1, mask1 = prepare_sentences(sents1, params.vocab)
-                sents2, mask2 = prepare_sentences(sents2, params.vocab)
-                sents3, mask3 = prepare_sentences(sents3, params.vocab)
+                sents1, mask1 = make_masks(params.tokenize(sents1))
+                sents2, mask2 = make_masks(params.tokenize(sents2))
+                sents3, mask3 = make_masks(params.tokenize(sents3))
                 if GPU:
                     labels = torch.LongTensor(labels).cuda()
                 else:

@@ -45,6 +45,22 @@ def prepare_sentences(sentences: List[List[str]], vocab):
     return packed_sents, mask
 
 
+def make_masks(sequences):
+    lengths = [len(sentence) for sentence in sequences]
+    mask = [[0 for _ in range(length)] + [1 for _ in range(max(lengths) - length)] for length in lengths]
+    mask = torch.FloatTensor(mask)
+
+    if GPU:
+        mask = mask.cuda()
+        tensor_sents = [torch.LongTensor(s).cuda() for s in sequences]
+    else:
+        tensor_sents = [torch.LongTensor(s) for s in sequences]
+
+    packed_sents = torch.nn.utils.rnn.pad_sequence(tensor_sents, padding_value=0, batch_first=True)
+
+    return packed_sents, mask
+
+
 def batch_iter(data, batch_size):
     """
     Given a list of examples, shuffle and slice them into mini-batches

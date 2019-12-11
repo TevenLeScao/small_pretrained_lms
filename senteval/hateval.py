@@ -11,9 +11,10 @@ import copy
 from senteval.tools.validation import SplitClassifier
 
 from models.sentence_encoders import SentenceEncoder
-from models.structure import WordEmbedder, StandardMLP
+from models.structure import StandardMLP
+from models.word_embedders import WordEmbedder
 from utils.helpers import \
-    prepare_sentences, batch_iter, word_lists_to_lines, lines_to_word_lists, progress_bar_msg, update_training_history
+    make_masks, batch_iter, word_lists_to_lines, lines_to_word_lists, progress_bar_msg, update_training_history
 from utils.progress_bar import progress_bar
 from configuration import SANITY, GPU, TrainConfig as tconfig
 from contextlib import nullcontext
@@ -88,7 +89,7 @@ class HatEval(object):
         word_embedder, sentence_encoder, classifier = models
         with context:
             for batch_num, (sents, labels) in enumerate(batch_iter(data, tconfig.batch_size)):
-                sents, mask = prepare_sentences(sents, params.vocab)
+                sents, mask = make_masks(params.tokenize(sents))
                 if GPU:
                     labels = torch.LongTensor(labels).cuda()
                 else:

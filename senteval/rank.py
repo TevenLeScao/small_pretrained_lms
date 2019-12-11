@@ -29,8 +29,9 @@ import torch
 from senteval.tools.ranking import ImageSentenceRankingPytorch
 
 from models.sentence_encoders import SentenceEncoder
-from models.structure import WordEmbedder, StandardMLP
-from utils.helpers import prepare_sentences, batch_iter, word_lists_to_lines, update_training_history, progress_bar_msg
+from models.structure import StandardMLP
+from models.word_embedders import WordEmbedder
+from utils.helpers import make_masks, batch_iter, word_lists_to_lines, update_training_history, progress_bar_msg
 from utils.progress_bar import progress_bar
 from configuration import SANITY, GPU, TrainConfig as tconfig
 
@@ -93,8 +94,8 @@ class ImageCaptionRetrievalEval(object):
         word_embedder, sentence_encoder, classifier = models
         with context:
             for batch_num, (sents1, sents2, labels) in enumerate(batch_iter(list(zip(*data)), tconfig.batch_size)):
-                sents1, mask1 = prepare_sentences(sents1, params.vocab)
-                sents2, mask2 = prepare_sentences(sents2, params.vocab)
+                sents1, mask1 = make_masks(params.tokenize(sents1))
+                sents2, mask2 = make_masks(params.tokenize(sents2))
                 if GPU:
                     labels = torch.LongTensor(labels).cuda()
                 else:

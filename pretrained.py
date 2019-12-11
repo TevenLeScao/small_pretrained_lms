@@ -7,15 +7,15 @@ import pickle
 from importlib import reload
 
 import torch
-from transformers import BertConfig, BertModel, BertForSequenceClassification, BertTokenizer
+from transformers import BertTokenizer
 
 import configuration
-from configuration import GPU, VocabConfig as vconfig
+from configuration import GPU, VocabConfig as vconfig, ModelConfig as mconfig
 import paths
 from utils.helpers import word_lists_to_lines, lines_to_word_lists, \
-    create_vocabulary, create_subwords, prepare_sentences
+    create_vocabulary, create_subwords, prepare_sentences, make_masks
 from models.sentence_encoders import SentenceEncoder, BOREP, RandomLSTM
-from models.bert_based_models import TransformerWordEmbedder
+from models.word_embedders import TransformerWordEmbedder, MODEL_CLASSES
 
 import senteval
 
@@ -29,18 +29,19 @@ def prepare(params, samples):
     pass
 
 
-def bert_tokenize(params, dataset):
-    return [["[CLS]"] + params.bert_tokenizer.tokenize(line) + ["[SEP]"] for line in word_lists_to_lines(dataset)]
+def pretrained_tokenize(params, dataset):
+    return [params.pretrained_tokenizer.encode(line) for line in word_lists_to_lines(dataset)]
+    # return [["[CLS]"] + params.pretrained_tokenizer.tokenize(line) + ["[SEP]"] for line in word_lists_to_lines(dataset)]
 
 
 def batcher(params, batch):
     # batch is an array of (string) sentences or list of word lists
 
-    sents = bert_tokenize(params, batch)
+    tokenized_sentences = pretrained_tokenize(params, batch)
 
     if not params.vocab:
         raise KeyError("no vocab in params !")
-    feature_vectors, masks = prepare_sentences(sents, params.vocab)
+    feature_vectors, masks = make_masks(tokenized_sentences)
 
     with torch.no_grad():
         word_vectors = params.word_embedder(feature_vectors, masks)
@@ -59,19 +60,23 @@ logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
 if __name__ == "__main__":
 
-    word_embedder = TransformerWordEmbedder(load_bert=preloaded_model)
-    sentence_encoder = RandomLSTM(word_dim=word_embedder.embedding_size)
-    # sentence_encoder = BOREP(word_dim=word_embedder.embedding_size)
-    bert_tokenizer = BertTokenizer.from_pretrained(preloaded_model)
+    word_embedder = TransformerWordEmbedder(pretrained=preloaded_model)
+    # sentence_encoder = RandomLSTM(word_dim=word_embedder.embedding_size)
+    sentence_encoder = BOREP(word_dim=word_embedder.embedding_size)
+    tokenizer = MODEL_CLASSES[mconfig.model]["tokenizer"].from_pretrained(preloaded_model)
     if GPU:
         word_embedder = word_embedder.cuda()
         sentence_encoder = sentence_encoder.cuda()
 
     base_params["sentence_encoder"] = sentence_encoder
     base_params["word_embedder"] = word_embedder
-    base_params["bert_tokenizer"] = bert_tokenizer
-    base_params["tokenize"] = bert_tokenize
-    base_params["vocab"] = bert_tokenizer.vocab
+    base_params["pretrained_tokenizer"] = tokenizer
+    base_params["tokenize"] = pretrained_tokenize
+    try:
+        base_params["vocab"] = tokenizer.vocab
+    except AttributeError:
+        # the XLM attribute is called encoder instead
+        base_params["vocab"] = tokenizer.encoder
 
     ee = senteval.eval_engine.SE(base_params, batcher)
     testing_tasks = ['EmoContext', 'HatEval', 'SNLI']

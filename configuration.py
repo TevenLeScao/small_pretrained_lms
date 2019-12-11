@@ -31,7 +31,7 @@ class ModelConfig:
         width = 256
         d_ff = 512
         n_head = 8
-        sentence_width = 1024
+        sentence_width = 4096
 
 
 class TrainConfig:
