@@ -93,7 +93,7 @@ class SNLI(object):
             return [line.split() for line in
                     f.read().splitlines()]
 
-    def epoch_loop(self, data, models, params, validation=False):
+    def epoch_loop(self, data, models, params, validation=False, untrained_encoder=False):
         epoch_losses = []
         epoch_accuracies = []
         if validation:
@@ -131,7 +131,7 @@ class SNLI(object):
                 model.train()
         return np.mean(epoch_losses), np.mean(epoch_accuracies)
 
-    def train(self, params):
+    def train(self, params, untrained_encoder=False):
         start_time = time()
         training_history = {'time': [], 'train_loss': [], 'train_acc': [], 'valid_loss': [], 'valid_acc': []}
         best_valid = 0
@@ -166,7 +166,7 @@ class SNLI(object):
 
         for epoch in range(start_epoch, tconfig.max_epoch):
             print("epoch {}".format(epoch))
-            train_loss, train_acc = self.epoch_loop(self.data['train'], models.values(), params, validation=False)
+            train_loss, train_acc = self.epoch_loop(self.data['train'], models.values(), params, validation=False, untrained_encoder=untrained_encoder)
             valid_loss, valid_acc = self.epoch_loop(self.data['valid'], models.values(), params, validation=True)
             elapsed_time = time() - start_time
             update_training_history(training_history, elapsed_time, train_loss, train_acc, valid_loss, valid_acc)
@@ -202,14 +202,21 @@ class SNLI(object):
                 batch2 = input2[ii:ii + params.batch_size]
 
                 if len(batch1) == len(batch2) and len(batch1) > 0:
-                    enc1 = batcher(params, batch1).cpu()
-                    enc2 = batcher(params, batch2).cpu()
-                    enc_input.append(np.hstack((enc1, enc2, enc1 * enc2,
-                                                np.abs(enc1 - enc2))))
+                    enc1 = batcher(params, batch1)
+                    enc2 = batcher(params, batch2)
+                    # enc_input.append(np.hstack((enc1, enc2, enc1 * enc2,
+                    #                             np.abs(enc1 - enc2))))
+                    enc_input.append(np.hstack((enc1, enc2)))
                 if (ii * params.batch_size) % (20000 * params.batch_size) == 0:
                     logging.info("PROGRESS (encoding): %.2f%%" %
                                  (100 * ii / n_labels))
-            self.X[key] = np.vstack(enc_input)
+                    # we add the training data bit by bit to not overwhelm the memory with one big stacking operation
+                    try:
+                        self.X[key] = np.vstack((self.X[key], *enc_input))
+                    except ValueError:
+                        self.X[key] = np.vstack(enc_input)
+                    enc_input = []
+            self.X[key] = np.vstack((self.X[key], *enc_input))
             self.y[key] = np.array([self.dico_label[y] for y in mylabels])
 
         config = {'nclasses': 3, 'seed': self.seed,

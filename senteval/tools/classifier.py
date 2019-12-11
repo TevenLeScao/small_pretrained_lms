@@ -110,24 +110,33 @@ class PyTorchClassifier(object):
                 self.optimizer.step()
         self.nepoch += epoch_size
 
-    def score(self, devX, devy):
+    def score(self, devX, devy, excluded_classes=None):
         self.model.eval()
-        correct = 0
+        preds = []
         if not isinstance(devX, torch.cuda.FloatTensor) or self.cudaEfficient:
             devX = torch.FloatTensor(devX).cuda()
             devy = torch.LongTensor(devy).cuda()
         with torch.no_grad():
             for i in range(0, len(devX), self.batch_size):
                 Xbatch = devX[i:i + self.batch_size]
-                ybatch = devy[i:i + self.batch_size]
                 if self.cudaEfficient:
                     Xbatch = Xbatch.cuda()
-                    ybatch = ybatch.cuda()
                 output = self.model(Xbatch)
-                pred = output.data.max(1)[1]
-                correct += pred.long().eq(ybatch.data.long()).sum().item()
-            accuracy = 1.0 * correct / len(devX)
-        return accuracy
+                preds.append(output.data.max(1)[1])
+        preds = torch.cat(preds)
+        if excluded_classes:
+            included_classes = set(range(self.nclasses)).difference(excluded_classes)
+            true_pos = sum(((preds == in_class) * (devy == in_class)).sum().item() for in_class in included_classes)
+            total_preds = sum((preds == in_class).sum().item() for in_class in included_classes)
+            total_targets = sum((devy == in_class).sum().item() for in_class in included_classes)
+            try:
+                precision = true_pos / total_preds
+                recall = true_pos / total_targets
+                return float(2 * precision * recall / (precision + recall))
+            except ZeroDivisionError:
+                return 0
+        else:
+            return float((preds == devy).sum().item() / devy.shape[0])
 
     def predict(self, devX):
         self.model.eval()

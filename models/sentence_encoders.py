@@ -28,6 +28,7 @@ class BOREP(SentenceEncoder):
     def forward(self, embedded_words: torch.Tensor, sent_mask=None) -> torch.Tensor:
         projected = self.projection(embedded_words)
         return projected.max(dim=1, keepdim=False)[0]
+        # return projected.mean(dim=1, keepdim=False)
 
     def redraw(self):
         self.projection = nn.Linear(self.word_dim, self.sentence_dim)

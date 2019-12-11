@@ -16,11 +16,11 @@ def change_pooler(bert_model: BertModel, pooler: SentenceEncoder):
 class TransformerWordEmbedder(WordEmbedder):
 
     def __init__(self, vocab_size=vconfig.vocab_size, depth=mconfig.depth, width=mconfig.width, n_head=mconfig.n_head,
-                 d_ff=mconfig.d_ff, load_bert=False):
+                 d_ff=mconfig.d_ff, load_bert=None):
         super(TransformerWordEmbedder, self).__init__()
         if load_bert:
-            self.config = BertConfig.from_pretrained('bert-base-uncased')
-            self.bert = BertModel.from_pretrained('bert-base-uncased')
+            self.config = BertConfig.from_pretrained(load_bert)
+            self.bert = BertModel.from_pretrained(load_bert)
         else:
             self.config = BertConfig(vocab_size, width, depth, n_head, d_ff)
             self.bert = BertModel(self.config)

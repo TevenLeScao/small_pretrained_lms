@@ -57,6 +57,8 @@ def tokenize(params, dataset):
 
 
 def batcher(params, batch):
+    params.word_embedder.eval()
+    params.sentence_encoder.eval()
     # batch is an array of (string) sentences or list of word lists
     if not isinstance(batch[0], str):
         # normalize the batch
@@ -76,14 +78,15 @@ def batcher(params, batch):
     feature_vectors, masks = prepare_sentences(lines, params.vocab)
 
     with torch.no_grad():
-        sentence_vectors = params.sentence_encoder(params.word_embedder(feature_vectors, masks), masks)
+        word_vectors = params.word_embedder(feature_vectors, masks)
+        sentence_vectors = params.sentence_encoder(word_vectors, masks).cpu().numpy()
 
     return sentence_vectors
 
 
 # Set params for SentEval
 base_params = {'base_path': paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
-base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
+base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 64,
                              'tenacity': 3, 'epoch_size': 2}
 
 # Set up logger
@@ -95,7 +98,7 @@ if __name__ == "__main__":
     sentence_encoder = RandomLSTM()
     try:
         word_embedder.load_params(osp.join(paths.direct_reload_path, "embedder"))
-        sentence_encoder.load_params(osp.join(paths.direct_reload_path, "encoder"))
+        # sentence_encoder.load_params(osp.join(paths.direct_reload_path, "encoder"))
     except (AttributeError, FileNotFoundError):
         pass
     if GPU:

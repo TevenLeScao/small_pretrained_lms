@@ -1,4 +1,3 @@
-'''emotional context analysis'''
 import os
 import torch
 import numpy as np
@@ -6,6 +5,10 @@ from time import time
 from nltk.tokenize import TweetTokenizer
 import csv
 import json
+import logging
+import copy
+
+from senteval.tools.validation import SplitClassifier
 
 from models.sentence_encoders import SentenceEncoder
 from models.structure import WordEmbedder, StandardMLP
@@ -22,28 +25,26 @@ class HatEval(object):
         self.seed = seed
 
         trainsent, trainlabels = self.loadFiles(taskpath, "train")
-
-        devsent, devlabels = self.loadFiles(taskpath, "dev")
-
+        validsent, validlabels = self.loadFiles(taskpath, "dev")
         testsent, testlabels = self.loadFiles(taskpath, "test")
 
         # sort to reduce the batch width
         train_sorted = sorted(list(zip(trainsent, trainlabels)), key=lambda z: len(z[0]))
-        dev_sorted = sorted(list(zip(devsent, devlabels)), key=lambda z: len(z[0]))
+        valid_sorted = sorted(list(zip(validsent, validlabels)), key=lambda z: len(z[0]))
         test_sorted = sorted(list(zip(testsent, testlabels)), key=lambda z: len(z[0]))
 
         if SANITY:
             self.data = {"train": list(zip(*train_sorted[:100])),
-                         "dev": list(zip(*dev_sorted[:100])),
+                         "valid": list(zip(*valid_sorted[:100])),
                          "test": list(zip(*test_sorted[:100]))}
         else:
             self.data = {"train": list(zip(*train_sorted)),
-                         "dev": list(zip(*dev_sorted)),
+                         "valid": list(zip(*valid_sorted)),
                          "test": list(zip(*test_sorted))}
 
-        self.n_classes = 2
+        self.nclasses = 2
         self.data_source = self.data
-        self.samples = trainsent + devsent + testsent
+        self.samples = trainsent + validsent + testsent
         self.training_samples = trainsent
 
     def do_prepare(self, params, prepare):
@@ -122,7 +123,7 @@ class HatEval(object):
         start_epoch = 0
         # to make sure we reload with the proper updated learning rate
         restart_memory = 0
-        classifier = StandardMLP(params, params.sentence_encoder.sentence_dim, self.n_classes)
+        classifier = StandardMLP(params, params.sentence_encoder.sentence_dim, self.nclasses)
         if GPU:
             classifier = classifier.cuda()
         models = {"embedder": params.word_embedder, "encoder": params.sentence_encoder, "classifier": classifier}
@@ -141,18 +142,18 @@ class HatEval(object):
         if sub_reader is not None:
             self.data_subwords = {}
             self.data_source = self.data_subwords
-            for data_type in ['train', 'dev']:
+            for data_type in ['train', 'valid']:
                 sub_list = list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data[data_type][0])))
                 label_list = self.data[data_type][1]
                 self.data_subwords[data_type] = list(zip(sub_list, label_list))
             print(len(self.data_subwords['train']))
-            print(len(self.data['dev']))
+            print(len(self.data['valid']))
 
         for epoch in range(start_epoch, tconfig.max_epoch):
             print("epoch {}".format(epoch))
             train_loss, train_acc = self.epoch_loop(self.data_source['train'], models.values(), params,
                                                     validation=False)
-            valid_loss, valid_acc = self.epoch_loop(self.data_source['dev'], models.values(), params, validation=True)
+            valid_loss, valid_acc = self.epoch_loop(self.data_source['valid'], models.values(), params, validation=True)
             elapsed_time = time() - start_time
             update_training_history(training_history, elapsed_time, train_loss, train_acc, valid_loss, valid_acc)
             json.dump(training_history, open(os.path.join(params.current_xp_folder, "training_history.json"), 'w'))
@@ -172,54 +173,43 @@ class HatEval(object):
                     break
 
     def run(self, params, batcher):
-        self.examples = {}
-        for key in self.data_source:
-            if key not in self.examples:
-                self.examples[key] = []
-            sents, labels = self.data_source[key]
+        self.X, self.y = {}, {}
+        for key in self.data:
+            if key not in self.X:
+                self.X[key] = []
+            if key not in self.y:
+                self.y[key] = []
+
+            sents, labels = self.data[key]
             enc_input = []
             n_labels = len(labels)
             for ii in range(0, n_labels, params.batch_size):
                 batch = sents[ii:ii + params.batch_size]
-                enc_input.append(batcher(params, batch))
-                if ii % 200 == 0:
-                    print("PROGRESS (encoding %s): %.2f%%" % (key, 100 * ii / n_labels))
-            labels = torch.LongTensor(labels)
-            self.examples[key] = (torch.cat(enc_input, dim=0), labels)
-        sentence_dim = self.examples['train'][0].shape[1]
+                encoding = batcher(params, batch)
+                enc_input.append(encoding)
+                if (ii * params.batch_size) % (200 * params.batch_size) == 0:
+                    logging.info("PROGRESS (encoding): %.2f%%" %
+                                 (100 * ii / n_labels))
+                    try:
+                        self.X[key] = np.vstack((self.X[key], *enc_input))
+                    except ValueError:
+                        self.X[key] = np.vstack(enc_input)
+                    enc_input = []
+            self.X[key] = np.vstack((self.X[key], *enc_input))
+            self.y[key] = np.array(labels)
 
-        classifier = StandardMLP(params, sentence_dim, self.n_classes)
-        train_data = self.examples['train']
-        train_data = [(train_data[0][i], train_data[1][i]) for i in range(train_data[0].shape[0])]
-        for embed, targets in batch_iter(train_data, params.batch_size):
-            embed = torch.stack(embed)
-            targets = torch.LongTensor(targets)
-            if GPU:
-                embed = embed.cuda()
-                targets = targets.cuda()
-            predictions = classifier(embed)
-            loss = classifier.predictions_to_loss(predictions, targets)
-            loss.backward()
-            classifier.step()
+        config = {'nclasses': self.nclasses, 'seed': self.seed,
+                  'usepytorch': params.usepytorch,
+                  'cudaEfficient': True,
+                  'nhid': params.nhid, 'noreg': True}
 
-        dev_embed, dev_labels = self.examples['dev']
-        test_embed, test_labels = self.examples['test']
-        if GPU:
-            dev_embed, dev_labels = dev_embed.cuda(), dev_labels.cuda()
-            test_embed, test_labels = test_embed.cuda(), test_labels.cuda()
+        config_classifier = copy.deepcopy(params.classifier)
+        config['classifier'] = config_classifier
 
-        with torch.no_grad():
-            dev_scores = classifier(dev_embed)
-            test_scores = classifier(test_embed)
-            dev_loss = classifier.predictions_to_loss(dev_scores, dev_labels).item()
-            dev_acc = classifier.predictions_to_acc(dev_scores, dev_labels).item()
-            dev_f1 = classifier.predictions_to_f1(dev_scores, dev_labels).item()
-            test_loss = classifier.predictions_to_loss(test_scores, test_labels).item()
-            test_acc = classifier.predictions_to_acc(test_scores, test_labels).item()
-            test_f1 = classifier.predictions_to_f1(test_scores, test_labels).item()
-
-        return {'devacc': dev_acc, 'acc': test_acc,
-                'devloss': dev_loss, 'loss': test_loss,
-                'devf1': dev_f1, 'f1': test_f1,
-                'ndev': len(self.data['dev'][0]),
+        clf = SplitClassifier(self.X, self.y, config)
+        validf1, testf1 = clf.run(excluded_classes=(0,))
+        logging.debug('Valid f1 : {0} Test f1 : {1} for HatEval\n'
+                      .format(validf1, testf1))
+        return {'validf1': validf1, 'testf1': testf1,
+                'nvalid': len(self.data['valid'][0]),
                 'ntest': len(self.data['test'][0])}

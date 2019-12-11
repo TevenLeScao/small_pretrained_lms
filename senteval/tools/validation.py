@@ -84,7 +84,7 @@ class InnerKFoldClassifier(object):
                         clf = LogisticRegression(C=reg, random_state=self.seed)
                         clf.fit(X_in_train, y_in_train)
                     regscores.append(clf.score(X_in_test, y_in_test))
-                scores.append(round(100*np.mean(regscores), 2))
+                scores.append(round(np.mean(regscores), 4))
             optreg = regs[np.argmax(scores)]
             logging.info('Best param found at split {0}: l2reg = {1} \
                 with score {2}'.format(count, optreg, np.max(scores)))
@@ -100,10 +100,10 @@ class InnerKFoldClassifier(object):
                 clf = LogisticRegression(C=optreg, random_state=self.seed)
                 clf.fit(X_train, y_train)
 
-            self.testresults.append(round(100*clf.score(X_test, y_test), 2))
+            self.testresults.append(round(clf.score(X_test, y_test), 4))
 
-        devaccuracy = round(np.mean(self.devresults), 2)
-        testaccuracy = round(np.mean(self.testresults), 2)
+        devaccuracy = round(np.mean(self.devresults), 4)
+        testaccuracy = round(np.mean(self.testresults), 4)
         return devaccuracy, testaccuracy
 
 
@@ -154,7 +154,7 @@ class KFoldClassifier(object):
                 score = clf.score(X_test, y_test)
                 scanscores.append(score)
             # Append mean score
-            scores.append(round(100*np.mean(scanscores), 2))
+            scores.append(round(np.mean(scanscores), 2))
 
         # evaluation
         logging.info([('reg:' + str(regs[idx]), scores[idx])
@@ -176,7 +176,7 @@ class KFoldClassifier(object):
         yhat = clf.predict(self.test['X'])
 
         testaccuracy = clf.score(self.test['X'], self.test['y'])
-        testaccuracy = round(100*testaccuracy, 2)
+        testaccuracy = round(testaccuracy, 4)
 
         return devaccuracy, testaccuracy, yhat
 
@@ -199,7 +199,7 @@ class SplitClassifier(object):
         self.noreg = False if 'noreg' not in config else config['noreg']
         self.config = config
 
-    def run(self):
+    def run(self, excluded_classes=None):
         logging.info('Training {0} with standard validation..'
                      .format(self.modelname))
         regs = [10**t for t in range(-5, -1)] if self.usepytorch else \
@@ -219,12 +219,12 @@ class SplitClassifier(object):
             else:
                 clf = LogisticRegression(C=reg, random_state=self.seed)
                 clf.fit(self.X['train'], self.y['train'])
-            scores.append(round(100*clf.score(self.X['valid'],
-                                self.y['valid']), 2))
+            scores.append(round(clf.score(self.X['valid'],
+                                self.y['valid'], excluded_classes=excluded_classes), 4))
         logging.info([('reg:'+str(regs[idx]), scores[idx])
                       for idx in range(len(scores))])
         optreg = regs[np.argmax(scores)]
-        devaccuracy = np.max(scores)
+        devaccuracy = max(scores)
         logging.info('Validation : best param found is reg = {0} with score \
             {1}'.format(optreg, devaccuracy))
         clf = LogisticRegression(C=optreg, random_state=self.seed)
@@ -241,6 +241,6 @@ class SplitClassifier(object):
             clf = LogisticRegression(C=optreg, random_state=self.seed)
             clf.fit(self.X['train'], self.y['train'])
 
-        testaccuracy = clf.score(self.X['test'], self.y['test'])
-        testaccuracy = round(100*testaccuracy, 2)
+        testaccuracy = clf.score(self.X['test'], self.y['test'], excluded_classes=excluded_classes)
+        testaccuracy = round(testaccuracy, 4)
         return devaccuracy, testaccuracy
