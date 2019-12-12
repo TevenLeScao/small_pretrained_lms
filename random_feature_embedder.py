@@ -105,6 +105,7 @@ if __name__ == "__main__":
         if torch.cuda.device_count() > 1:
             print("%s GPUs found, using parallel data"%torch.cuda.device_count())
             word_embedder = SimpleDataParallel(word_embedder, dim=0)
+            sentence_encoder = SimpleDataParallel(sentence_encoder, dim=0)
     base_params["sentence_encoder"] = sentence_encoder
     base_params["word_embedder"] = word_embedder
     training_tasks = ['SNLI']
