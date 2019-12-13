@@ -60,3 +60,11 @@ class TrainConfig:
     else:
         max_epoch = 100
         resume_training = True
+
+
+class TransferConfig:
+    lr = 0.001
+    weight_decay = 0.00001
+    batch_size = 64
+    epoch = 10
+    optim = "adam,lr=%f,weight_decay=%f" % (lr, weight_decay)

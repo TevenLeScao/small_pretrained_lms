@@ -141,9 +141,9 @@ class StandardMLP(GeneralModel):
         true_pos = sum(((predictions == in_class) * (target == in_class)).sum().item() for in_class in included_classes)
         total_preds = sum((predictions == in_class).sum().item() for in_class in included_classes)
         total_targets = sum((target == in_class).sum().item() for in_class in included_classes)
-        precision = true_pos / total_preds
+        precision = true_pos / (total_preds + 2e-8)
         recall = true_pos / total_targets
-        return 2 * precision * recall / (precision + recall)
+        return 2 * precision * recall / (precision + recall + 2e-8)
 
     def main_module(self):
         return self.mlp

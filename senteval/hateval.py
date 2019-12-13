@@ -12,7 +12,7 @@ from models.structure import WordEmbedder, StandardMLP
 from utils.helpers import \
     prepare_sentences, batch_iter, word_lists_to_lines, lines_to_word_lists, progress_bar_msg, update_training_history
 from utils.progress_bar import progress_bar
-from configuration import SANITY, GPU, TrainConfig as tconfig
+from configuration import SANITY, GPU, TrainConfig as tconfig, TransferConfig as transconfig
 from contextlib import nullcontext
 
 
@@ -172,6 +172,8 @@ class HatEval(object):
                     break
 
     def run(self, params, batcher):
+        print("******* Transferring to the HatEval task ********")
+        params['optim'] = transconfig.optim
         self.examples = {}
         for key in self.data_source:
             if key not in self.examples:
@@ -191,16 +193,18 @@ class HatEval(object):
         classifier = StandardMLP(params, sentence_dim, self.n_classes)
         train_data = self.examples['train']
         train_data = [(train_data[0][i], train_data[1][i]) for i in range(train_data[0].shape[0])]
-        for embed, targets in batch_iter(train_data, params.batch_size):
-            embed = torch.stack(embed)
-            targets = torch.LongTensor(targets)
-            if GPU:
-                embed = embed.cuda()
-                targets = targets.cuda()
-            predictions = classifier(embed)
-            loss = classifier.predictions_to_loss(predictions, targets)
-            loss.backward()
-            classifier.step()
+        print("Training a classifier layer")
+        for epoch in range(transconfig.epoch):
+            for embed, targets in batch_iter(train_data, params.batch_size):
+                embed = torch.stack(embed)
+                targets = torch.LongTensor(targets)
+                if GPU:
+                    embed = embed.cuda()
+                    targets = targets.cuda()
+                predictions = classifier(embed)
+                loss = classifier.predictions_to_loss(predictions, targets)
+                loss.backward()
+                classifier.step()
 
         dev_embed, dev_labels = self.examples['dev']
         test_embed, test_labels = self.examples['test']
