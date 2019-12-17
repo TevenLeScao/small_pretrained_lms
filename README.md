@@ -1,6 +1,6 @@
 # Small pre-trained language models
 
-More efficient word embeddings for classification tasks, with smaller models trained on supervised data & reduced-size conventional pre-trained embeddings.
+More efficient word embeddings for production classification tasks, with smaller models trained on supervised data & reduced-size conventional pre-trained embeddings.
 
 Based on :
  - FB's [SentEval](https://github.com/facebookresearch/SentEval) for multi-task supervision
