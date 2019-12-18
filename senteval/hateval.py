@@ -1,28 +1,20 @@
 import os
-import torch
 import numpy as np
-from time import time
 from nltk.tokenize import TweetTokenizer
 import csv
-import json
 import logging
 import copy
 
 from senteval.tools.validation import SplitClassifier
 
-from models.sentence_encoders import SentenceEncoder
-from models.structure import StandardMLP
-from models.word_embedders import WordEmbedder
-from utils.helpers import \
-    make_masks, batch_iter, word_lists_to_lines, lines_to_word_lists, progress_bar_msg, update_training_history
-from utils.progress_bar import progress_bar
 from configuration import SANITY, GPU, TrainConfig as tconfig
-from contextlib import nullcontext
+from senteval.trainer import Trainer
 
 
-class HatEval(object):
+class HatEval(Trainer):
 
     def __init__(self, taskpath, seed=111):
+        super(HatEval, self).__init__()
         self.seed = seed
 
         trainsent, trainlabels = self.loadFiles(taskpath, "train")
@@ -44,6 +36,7 @@ class HatEval(object):
                          "test": list(zip(*test_sorted))}
 
         self.nclasses = 2
+        self.ninputs = 1
         self.data_source = self.data
         self.samples = trainsent + validsent + testsent
         self.training_samples = trainsent
@@ -77,103 +70,13 @@ class HatEval(object):
 
         return sent, labels
 
-    def epoch_loop(self, data, models, params, validation=False):
-        epoch_losses = []
-        epoch_accuracies = []
-        if validation:
-            for model in models:
-                model.eval()
-            context = torch.no_grad()
-        else:
-            context = nullcontext()
-        word_embedder, sentence_encoder, classifier = models
-        with context:
-            for batch_num, (sents, labels) in enumerate(batch_iter(data, tconfig.batch_size)):
-                sents, mask = make_masks(params.tokenize(sents))
-                if GPU:
-                    labels = torch.LongTensor(labels).cuda()
-                else:
-                    labels = torch.LongTensor(labels)
-                enc = sentence_encoder(word_embedder(sents, mask), mask)
-                classifier_input = enc
-                predictions = classifier(classifier_input)
-                loss = classifier.predictions_to_loss(predictions, labels)
-                if not validation:
-                    loss = loss / tconfig.accumulate
-                    loss.backward()
-                    for model in models:
-                        model.step()
-
-                epoch_losses.append(loss.item())
-                predictions = classifier(classifier_input)
-                acc = classifier.predictions_to_acc(predictions, labels)
-                epoch_accuracies.append(acc.item())
-
-                progress_bar(batch_num, (len(data) // tconfig.batch_size) + 1,
-                             msg="{:.4f} {} loss    ".format(np.mean(epoch_losses),
-                                                             "validation" if validation else "training"))
-        if validation:
-            for model in models:
-                model.train()
-        return np.mean(epoch_losses), np.mean(epoch_accuracies)
-
-    def train(self, params):
-        start_time = time()
-        training_history = {'time': [], 'train_loss': [], 'train_acc': [], 'valid_loss': [], 'valid_acc': []}
-        best_valid = 0
-        start_epoch = 0
-        # to make sure we reload with the proper updated learning rate
-        restart_memory = 0
-        classifier = StandardMLP(params, params.sentence_encoder.sentence_dim, self.nclasses)
-        if GPU:
-            classifier = classifier.cuda()
-        models = {"embedder": params.word_embedder, "encoder": params.sentence_encoder, "classifier": classifier}
-        if tconfig.resume_training:
-            try:
-                for key, model in models.items():
-                    print("reloaded {}".format(key))
-                    model.load_params(os.path.join(params.current_xp_folder, key))
-                training_history = json.load(open(os.path.join(params.current_xp_folder, "training_history.json"), 'r'))
-                best_valid = min(training_history['valid_loss'])
-                start_epoch = len(training_history['valid_loss'])
-            except FileNotFoundError:
-                print("Could not find models to load")
-
-        sub_reader = params.get("reader")
-        if sub_reader is not None:
-            self.data_subwords = {}
-            self.data_source = self.data_subwords
-            for data_type in ['train', 'valid']:
-                sub_list = list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data[data_type][0])))
-                label_list = self.data[data_type][1]
-                self.data_subwords[data_type] = list(zip(sub_list, label_list))
-            print(len(self.data_subwords['train']))
-            print(len(self.data['valid']))
-
-        for epoch in range(start_epoch, tconfig.max_epoch):
-            print("epoch {}".format(epoch))
-            train_loss, train_acc = self.epoch_loop(self.data_source['train'], models.values(), params,
-                                                    validation=False)
-            valid_loss, valid_acc = self.epoch_loop(self.data_source['valid'], models.values(), params, validation=True)
-            elapsed_time = time() - start_time
-            update_training_history(training_history, elapsed_time, train_loss, train_acc, valid_loss, valid_acc)
-            json.dump(training_history, open(os.path.join(params.current_xp_folder, "training_history.json"), 'w'))
-            if valid_acc > best_valid:
-                best_valid = valid_acc
-                restart_memory = 0
-                for key, model in models.items():
-                    model.save(os.path.join(params.current_xp_folder, key))
-            else:
-                print("updating LR and re-loading model")
-                restart_memory += 1
-                for key, model in models.items():
-                    model.load_params(os.path.join(params.current_xp_folder, key))
-                    model.update_learning_rate(tconfig.lr_decay ** restart_memory)
-                if max(model.get_current_learning_rate() for model in models.values()) < tconfig.min_lr:
-                    print("min lr {} reached, stopping training".format(tconfig.min_lr))
-                    break
-
     def run(self, params, batcher):
+        if params.train_encoder:
+            tconfig.resume_training = False
+            params.sentence_encoder.__init__()
+            if GPU:
+                params.sentence_encoder = params.sentence_encoder.cuda()
+            self.train(params, frozen_models=("embedder",))
         self.X, self.y = {}, {}
         for key in self.data:
             if key not in self.X:

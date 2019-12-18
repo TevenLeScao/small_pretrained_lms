@@ -38,9 +38,9 @@ class BOREP(SentenceEncoder):
 class RandomLSTM(SentenceEncoder):
     # after Wieting and Kiela
 
-    def __init__(self, word_dim=mconfig.width, sentence_dim=mconfig.sentence_width):
+    def __init__(self, word_dim=mconfig.width, sentence_dim=mconfig.sentence_width, depth=mconfig.encoder_depth):
         super(RandomLSTM, self).__init__(word_dim, sentence_dim)
-        self.projection = nn.LSTM(word_dim, sentence_dim // 2, bidirectional=True, batch_first=True)
+        self.projection = nn.LSTM(word_dim, sentence_dim // 2, num_layers=depth, bidirectional=True, batch_first=True)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=tconfig.lr, weight_decay=tconfig.weight_decay)
 
     def forward(self, embedded_words: torch.Tensor, sent_mask: torch.Tensor) -> torch.Tensor:

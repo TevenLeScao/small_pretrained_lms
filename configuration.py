@@ -2,7 +2,7 @@ import torch
 
 SANITY = False
 GPU = torch.cuda.is_available()
-EXPERIMENT_NAME = "SNLI2EmoHateSNLI_4096"
+EXPERIMENT_NAME = "SNLI2EmoHateSNLI_2048" if not SANITY else "sanity"
 
 
 class VocabConfig:
@@ -25,13 +25,15 @@ class ModelConfig:
         d_ff = 64
         n_head = 1
         sentence_width = 1024
+        encoder_depth = 3
     else:
         model = "bert"
         depth = 6
         width = 256
         d_ff = 512
         n_head = 8
-        sentence_width = 4096
+        sentence_width = 2048
+        encoder_depth = 3
 
 
 class TrainConfig:

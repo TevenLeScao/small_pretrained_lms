@@ -94,6 +94,7 @@ class StandardMLP(GeneralModel):
     def __init__(self, params, inputdim, nclasses):
         super(StandardMLP, self).__init__()
         self.mlp = standard_mlp(params, inputdim, nclasses)
+        self.nclasses = nclasses
         optim = "adam" if "optim" not in params else params["optim"]
         optim_fn, optim_params = get_optimizer(optim)
         self.optimizer = optim_fn(self.mlp.parameters(), **optim_params)
@@ -114,21 +115,18 @@ class StandardMLP(GeneralModel):
         predictions = predictions.max(dim=1)[1]
         return (predictions == target).sum().double() / target.shape[0]
 
-    def predictions_to_f1(self, predictions, target):
-        if GPU:
-            predictions = predictions.cpu()
-            target = target.cpu()
+    def emocontext_f1(self, predictions, target, excluded_classes=(0,)):
         predictions = predictions.max(dim=1)[1]
-        return f1_score(target, predictions, average='micro')
-
-    def emocontext_f1(self, predictions, target, included_classes=(1, 2, 3)):
-        predictions = predictions.max(dim=1)[1]
+        included_classes = set(range(self.nclasses)) - set(excluded_classes)
         true_pos = sum(((predictions == in_class) * (target == in_class)).sum().item() for in_class in included_classes)
         total_preds = sum((predictions == in_class).sum().item() for in_class in included_classes)
         total_targets = sum((target == in_class).sum().item() for in_class in included_classes)
-        precision = true_pos / total_preds
-        recall = true_pos / total_targets
-        return 2 * precision * recall / (precision + recall)
+        try:
+            precision = true_pos / total_preds
+            recall = true_pos / total_targets
+            return float(2 * precision * recall / (precision + recall))
+        except ZeroDivisionError:
+            return 0
 
     def main_module(self):
         return self.mlp

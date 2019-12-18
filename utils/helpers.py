@@ -78,7 +78,7 @@ def batch_iter(data, batch_size):
 
         examples = sorted(examples, key=lambda e: len(e[0]), reverse=True)
 
-        yield ([e[i] for e in examples] for i in range(len(examples[0])))
+        yield [[e[i] for e in examples] for i in range(len(examples[0]))]
 
 
 def word_lists_to_lines(sentences):
@@ -207,14 +207,14 @@ def get_optimizer(s):
 
     return optim_fn, optim_params
 
-def progress_bar_msg(validation, epoch_losses, epoch_accuracies):
+def progress_bar_msg(validation, epoch_losses, epoch_scores):
     letter = "v" if validation else "t"
-    return "{:.4f} {}. loss | {:.3f} {}. acc.   ".format(np.mean(epoch_losses), letter, np.mean(epoch_accuracies), letter)
+    return "{:.4f} {}. loss | {:.3f} {}. score.   ".format(np.mean(epoch_losses), letter, np.mean(epoch_scores), letter)
 
 
 def update_training_history(history, time, train_loss, train_acc, valid_loss, valid_acc):
     history['time'].append(time)
     history['train_loss'].append(train_loss)
-    history['train_acc'].append(train_acc)
+    history['train_score'].append(train_acc)
     history['valid_loss'].append(valid_loss)
-    history['valid_acc'].append(valid_acc)
+    history['valid_score'].append(valid_acc)

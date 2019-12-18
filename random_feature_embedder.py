@@ -76,7 +76,7 @@ def batcher(params, batch):
 
 
 # Set params for SentEval
-base_params = {'base_path': paths.semeval_data_path, 'usepytorch': True, 'kfold': 5}
+base_params = {'base_path': paths.semeval_data_path, 'usepytorch': True, 'kfold': 5, "train_encoder":True}
 base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 64,
                              'tenacity': 3, 'epoch_size': 2}
 
@@ -89,7 +89,8 @@ if __name__ == "__main__":
     sentence_encoder = RandomLSTM()
     try:
         word_embedder.load_params(osp.join(paths.direct_reload_path, "embedder"))
-        sentence_encoder.load_params(osp.join(paths.direct_reload_path, "encoder"))
+        if not base_params.get("train_encoder"):
+            sentence_encoder.load_params(osp.join(paths.direct_reload_path, "encoder"))
     except (AttributeError, FileNotFoundError):
         pass
     if GPU:
@@ -100,7 +101,7 @@ if __name__ == "__main__":
     base_params["word_embedder"] = word_embedder
     base_params["tokenize"] = tokenize
     training_tasks = []
-    testing_tasks = ['EmoContext', 'HatEval']
+    testing_tasks = ['HatEval', 'EmoContext']
 
     if training_tasks:
         te = senteval.train_engine.TrainEngine(base_params, train_prepare)

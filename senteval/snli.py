@@ -20,6 +20,7 @@ import copy
 import logging
 import numpy as np
 from contextlib import nullcontext
+from typing import Dict
 
 import torch
 
@@ -94,20 +95,21 @@ class SNLI(object):
             return [line.split() for line in
                     f.read().splitlines()]
 
-    def epoch_loop(self, data, models, params, validation=False, untrained_encoder=False):
+    def epoch_loop(self, data, models: Dict, params, frozen_models=(), validation=False):
         epoch_losses = []
         epoch_accuracies = []
-        if validation:
-            for model in models:
+        for key, model in models.items():
+            if validation or key in frozen_models:
                 model.eval()
+        if validation:
             context = torch.no_grad()
         else:
             context = nullcontext()
-        word_embedder, sentence_encoder, classifier = models
+        word_embedder, sentence_encoder, classifier = models.values()
         with context:
             for batch_num, (sents1, sents2, labels) in enumerate(batch_iter(list(zip(*data)), tconfig.batch_size)):
-                sents1, mask1 = make_masks(params.tokenize(sents1))
-                sents2, mask2 = make_masks(params.tokenize(sents2))
+                sents1, mask1 = make_masks(params.tokenize(params, sents1))
+                sents2, mask2 = make_masks(params.tokenize(params, sents2))
                 if GPU:
                     labels = torch.LongTensor(labels).cuda()
                 else:
@@ -123,18 +125,19 @@ class SNLI(object):
                 if not validation:
                     loss = loss / tconfig.accumulate
                     loss.backward()
-                    for model in models:
-                        model.step()
+                    for key, model in models.items():
+                        if key not in frozen_models:
+                            model.step()
                 progress_bar(batch_num, (len(data[0]) // tconfig.batch_size) + 1,
                              msg=progress_bar_msg(validation, epoch_losses, epoch_accuracies))
-        if validation:
-            for model in models:
+        for key, model in models.items():
+            if validation or key in frozen_models:
                 model.train()
         return np.mean(epoch_losses), np.mean(epoch_accuracies)
 
-    def train(self, params, untrained_encoder=False):
+    def train(self, params, frozen_models=()):
         start_time = time()
-        training_history = {'time': [], 'train_loss': [], 'train_acc': [], 'valid_loss': [], 'valid_acc': []}
+        training_history = {'time': [], 'train_loss': [], 'train_score': [], 'valid_loss': [], 'valid_score': []}
         best_valid = 0
         start_epoch = 0
         # to make sure we reload with the proper updated learning rate
@@ -143,51 +146,55 @@ class SNLI(object):
         if GPU:
             classifier = classifier.cuda()
         models = {"embedder": params.word_embedder, "encoder": params.sentence_encoder, "classifier": classifier}
+        for frozen in frozen_models:
+            for param in models[frozen].parameters():
+                param.requires_grad = False
         if tconfig.resume_training:
             try:
                 for key, model in models.items():
-                    print("reloaded {}".format(key))
                     model.load_params(osp.join(params.current_xp_folder, key))
+                    print("reloaded {}".format(key))
                 training_history = json.load(open(osp.join(params.current_xp_folder, "training_history.json"), 'r'))
                 best_valid = min(training_history['valid_loss'])
                 start_epoch = len(training_history['valid_loss'])
             except FileNotFoundError:
                 print("Could not find models to load")
 
-        sub_reader = params.get("reader")
-        if sub_reader is not None:
-            self.data['train'] = (list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data['train'][0]))),
-                                  list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data['train'][1]))),
-                                  [self.dico_label[value] for value in self.data['train'][2]])
-            print(len(self.data['train'][0]))
-            self.data['valid'] = (list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data['valid'][0]))),
-                                  list(sub_reader.lines_to_subwords(word_lists_to_lines(self.data['valid'][1]))),
-                                  [self.dico_label[value] for value in self.data['valid'][2]])
-            print(len(self.data['valid'][0]))
+        self.data['train'] = (params.tokenize(params, self.data['train'][0]),
+                              params.tokenize(params, self.data['train'][1]),
+                              [self.dico_label[value] for value in self.data['train'][2]])
+        self.data['valid'] = (params.tokenize(params, self.data['valid'][0]),
+                              params.tokenize(params, self.data['valid'][1]),
+                              [self.dico_label[value] for value in self.data['valid'][2]])
 
         for epoch in range(start_epoch, tconfig.max_epoch):
             print("epoch {}".format(epoch))
-            train_loss, train_acc = self.epoch_loop(self.data['train'], models.values(), params, validation=False)
-            valid_loss, valid_acc = self.epoch_loop(self.data['valid'], models.values(), params, validation=True)
+            train_loss, train_acc = self.epoch_loop(self.data['train'], models, params, frozen_models=frozen_models, validation=False)
+            valid_loss, valid_acc = self.epoch_loop(self.data['valid'], models, params, frozen_models=frozen_models, validation=True)
             elapsed_time = time() - start_time
             update_training_history(training_history, elapsed_time, train_loss, train_acc, valid_loss, valid_acc)
             json.dump(training_history, open(osp.join(params.current_xp_folder, "training_history.json"), 'w'))
-            if valid_acc > best_valid:
+            if valid_acc >= best_valid:
                 best_valid = valid_acc
                 restart_memory = 0
                 for key, model in models.items():
-                    model.save(osp.join(params.current_xp_folder, key))
+                    if key not in frozen_models:
+                        model.save(osp.join(params.current_xp_folder, key))
             else:
                 print("updating LR and re-loading model")
                 restart_memory += 1
                 for key, model in models.items():
-                    model.load_params(os.path.join(params.current_xp_folder, key))
-                    model.update_learning_rate(tconfig.lr_decay ** restart_memory)
+                    if key not in frozen_models:
+                        model.load_params(os.path.join(params.current_xp_folder, key))
+                        model.update_learning_rate(tconfig.lr_decay ** restart_memory)
                 if max(model.get_current_learning_rate() for model in models.values()) < tconfig.min_lr:
                     print("min lr {} reached, stopping training".format(tconfig.min_lr))
                     break
 
     def run(self, params, batcher):
+        if params.train_encoder:
+            tconfig.resume_training = False
+            self.train(params, frozen_models=("encoder",))
         self.X, self.y = {}, {}
         for key in self.data:
             if key not in self.X:
@@ -205,9 +212,7 @@ class SNLI(object):
                 if len(batch1) == len(batch2) and len(batch1) > 0:
                     enc1 = batcher(params, batch1)
                     enc2 = batcher(params, batch2)
-                    # enc_input.append(np.hstack((enc1, enc2, enc1 * enc2,
-                    #                             np.abs(enc1 - enc2))))
-                    enc_input.append(np.hstack((enc1, enc2)))
+                    enc_input.append(np.hstack((enc1, enc2, enc1, enc2, enc1 * enc2, np.abs(enc1 - enc2))))
                 if (ii * params.batch_size) % (20000 * params.batch_size) == 0:
                     logging.info("PROGRESS (encoding): %.2f%%" %
                                  (100 * ii / n_labels))

@@ -46,8 +46,8 @@ class TrainEngine(object):
     def train(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
         if (isinstance(name, list)):
-            self.results = {x: self.train(x) for x in name}
-            return self.results
+            for x in name:
+                self.train(x)
         assert name in self.list_tasks, str(name) + ' not in ' + str(self.list_tasks)
 
         # Original SentEval tasks
@@ -142,5 +142,3 @@ class TrainEngine(object):
         self.trainer.do_train_prepare(self.params, self.prepare)
 
         self.results = self.trainer.train(self.params)
-
-        return self.results
