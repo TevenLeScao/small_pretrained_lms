@@ -1,6 +1,6 @@
 import torch
 
-SANITY = True
+SANITY = False
 GPU = torch.cuda.is_available()
 EXPERIMENT_NAME = "SNLI2EmoHateSNLI_2048" if not SANITY else "sanity"
 

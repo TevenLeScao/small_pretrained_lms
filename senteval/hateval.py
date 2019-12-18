@@ -7,7 +7,7 @@ import copy
 
 from senteval.tools.validation import SplitClassifier
 
-from configuration import SANITY, GPU, TrainConfig as tconfig
+from configuration import SANITY, GPU, TrainConfig as tconfig, ModelConfig as mconfig
 from senteval.trainer import Trainer
 
 
@@ -73,7 +73,8 @@ class HatEval(Trainer):
     def run(self, params, batcher):
         if params.train_encoder:
             tconfig.resume_training = False
-            params.sentence_encoder.__init__()
+            params.sentence_encoder.__init__(word_dim=mconfig.width, sentence_dim=mconfig.sentence_width,
+                                             depth=mconfig.encoder_depth)
             if GPU:
                 params.sentence_encoder = params.sentence_encoder.cuda()
             self.train(params, frozen_models=("embedder",))

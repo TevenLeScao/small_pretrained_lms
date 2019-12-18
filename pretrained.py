@@ -61,8 +61,9 @@ logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 if __name__ == "__main__":
 
     word_embedder = TransformerWordEmbedder(pretrained=preloaded_model)
-    # sentence_encoder = RandomLSTM(word_dim=word_embedder.embedding_size)
-    sentence_encoder = BOREP(word_dim=word_embedder.embedding_size)
+    sentence_encoder = RandomLSTM(word_dim=word_embedder.embedding_size)
+    mconfig.width = word_embedder.embedding_size
+    # sentence_encoder = BOREP(word_dim=word_embedder.embedding_size)
     tokenizer = MODEL_CLASSES[mconfig.model]["tokenizer"].from_pretrained(preloaded_model)
     if GPU:
         word_embedder = word_embedder.cuda()
