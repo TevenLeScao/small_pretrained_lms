@@ -14,6 +14,7 @@ from utils.helpers import word_lists_to_lines, lines_to_word_lists, \
 from utils import subwords
 from models.sentence_encoders import SentenceEncoder, BOREP, RandomLSTM
 from models.word_embedders import BertWordEmbedder
+from models.structure import SimpleDataParallel
 
 import senteval
 
@@ -96,7 +97,10 @@ if __name__ == "__main__":
     if GPU:
         word_embedder = word_embedder.cuda()
         sentence_encoder = sentence_encoder.cuda()
-
+        if torch.cuda.device_count() > 1:
+            print("%s GPUs found, using parallel data"%torch.cuda.device_count())
+            word_embedder = SimpleDataParallel(word_embedder, dim=0)
+            sentence_encoder = SimpleDataParallel(sentence_encoder, dim=0)
     base_params["sentence_encoder"] = sentence_encoder
     base_params["word_embedder"] = word_embedder
     base_params["tokenize"] = tokenize

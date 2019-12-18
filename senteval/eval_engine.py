@@ -111,11 +111,13 @@ class SE(object):
         elif name == 'ImageCaptionRetrieval':
             self.params.task_path = self.params.base_path + '/downstream/COCO'
             self.evaluation = ImageCaptionRetrievalEval(self.params.task_path, seed=self.params.seed)
+
+        # SemEval tasks
         elif name == 'EmoContext':
-            self.params.task_path = self.params.base_path + '/downstream/EmoContext'
+            self.params.task_path = self.params.semeval_path + '/downstream/EmoContext'
             self.evaluation = EmoContext(self.params.task_path, seed=self.params.seed)
         elif name == 'HatEval':
-            self.params.task_path = self.params.base_path + '/downstream/HatEval'
+            self.params.task_path = self.params.semeval_path + '/downstream/HatEval'
             self.evaluation = HatEval(self.params.task_path, seed=self.params.seed)
 
         # Probing Tasks
