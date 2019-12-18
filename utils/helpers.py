@@ -32,7 +32,7 @@ def prepare_sentences(sentences: List[List[str]], vocab):
     lengths = [len(sentence) for sentence in sentences]
     mask = [[0 for _ in range(length)] + [1 for _ in range(max(lengths) - length)] for length in lengths]
     mask = torch.FloatTensor(mask)
-
+    q = [sent for sent in sentences]
     np_sents = [np.array([vocab[word] for word in sent]) for sent in sentences]
     if GPU:
         mask = mask.cuda()
