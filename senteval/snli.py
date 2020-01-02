@@ -227,7 +227,7 @@ class SNLI(object):
 
         config = {'nclasses': 3, 'seed': self.seed,
                   'usepytorch': params.usepytorch,
-                  'cudaEfficient': True,
+                  'cudaEfficient': GPU,
                   'nhid': params.nhid, 'noreg': True}
 
         config_classifier = copy.deepcopy(params.classifier)

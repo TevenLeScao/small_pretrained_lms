@@ -2,6 +2,8 @@ from senteval.binary import CREval, MREval, MPQAEval, SUBJEval
 from senteval.snli import SNLI
 from senteval.emocontext import EmoContext
 from senteval.hateval import HatEval
+from senteval.sentiment import SentimentAnalysis
+from senteval.permutation_detection import PermutationDetection
 from senteval.trec import TRECEval
 from senteval.sick import SICKRelatednessEval, SICKEntailmentEval
 from senteval.mrpc import MRPCEval
@@ -41,13 +43,16 @@ class TrainEngine(object):
                            'STS14', 'STS15', 'STS16',
                            'Length', 'WordContent', 'Depth', 'TopConstituents',
                            'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
-                           'OddManOut', 'CoordinationInversion', 'EmoContext', 'HatEval']
+                           'OddManOut', 'CoordinationInversion', 'EmoContext', 'HatEval', 'Sentiment', 'Permutation']
 
     def train(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
+        if not hasattr(self, 'results'):
+            self.results = []
         if (isinstance(name, list)):
             for x in name:
-                self.train(x)
+                self.results.append(self.train(x))
+            return self.results
         assert name in self.list_tasks, str(name) + ' not in ' + str(self.list_tasks)
 
         # Original SentEval tasks
@@ -63,6 +68,13 @@ class TrainEngine(object):
             self.params.task_path = self.params.semeval_path + '/downstream/{}'.format(name)
             self.trainer = HatEval(self.params.task_path, seed=self.params.seed)
 
+        if name == "Sentiment":
+            self.params.task_path = self.params.others_path + '/downstream/{}'.format(name)
+            self.trainer = SentimentAnalysis(self.params.task_path, seed=self.params.seed)
+
+        if name == "Permutation":
+            self.params.task_path = self.params.others_path + '/downstream/{}'.format(name)
+            self.trainer = PermutationDetection(self.params.task_path, seed=self.params.seed)
         # TODO: convert other tasks
         # if name == 'CR':
         #     self.params.task_path = self.params.base_path + '/downstream/{}'.format(name)

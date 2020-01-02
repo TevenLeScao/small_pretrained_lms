@@ -28,6 +28,8 @@ from senteval.rank import ImageCaptionRetrievalEval
 from senteval.probing import *
 from senteval.emocontext import EmoContext
 from senteval.hateval import HatEval
+from senteval.sentiment import SentimentAnalysis
+from senteval.permutation_detection import PermutationDetection
 
 
 class SE(object):
@@ -59,7 +61,7 @@ class SE(object):
                            'Length', 'WordContent', 'Depth', 'TopConstituents',
                            'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
                            'OddManOut', 'CoordinationInversion', 'EmoContext',
-                           'HatEval']
+                           'HatEval', 'Sentiment', 'Permutation']
 
     def eval(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
@@ -114,11 +116,19 @@ class SE(object):
 
         # SemEval tasks
         elif name == 'EmoContext':
-            self.params.task_path = self.params.base_path + '/downstream/EmoContext'
+            self.params.task_path = self.params.semeval_path + '/downstream/EmoContext'
             self.evaluation = EmoContext(self.params.task_path, seed=self.params.seed)
         elif name == 'HatEval':
-            self.params.task_path = self.params.base_path + '/downstream/HatEval'
+            self.params.task_path = self.params.semeval_path + '/downstream/HatEval'
             self.evaluation = HatEval(self.params.task_path, seed=self.params.seed)
+
+        # Other tasks
+        elif name == "Sentiment":
+            self.params.task_path = self.params.others_path + '/downstream/{}'.format(name)
+            self.evaluation = SentimentAnalysis(self.params.task_path, seed=self.params.seed)
+        elif name == "Permutation":
+            self.params.task_path = self.params.others_path + '/downstream/{}'.format(name)
+            self.evaluation = PermutationDetection(self.params.task_path, seed=self.params.seed)
 
         # Probing Tasks
         elif name == 'Length':

@@ -5,7 +5,8 @@ from time import time
 import json
 
 from models.sentence_encoders import SentenceEncoder
-from models.structure import WordEmbedder, StandardMLP
+from models.word_embedders import WordEmbedder
+from models.structure import StandardMLP
 from utils.helpers import \
     prepare_sentences, batch_iter, word_lists_to_lines, lines_to_word_lists, progress_bar_msg, update_training_history
 from utils.progress_bar import progress_bar
@@ -57,8 +58,9 @@ class Classifier_task(object):
 
         self.n_classes = len(self.dict_label)
         self.data_source = self.data
-        self.samples = list(zip(train[:-1])) + list(zip(dev[:-1])) + list(zip(test[:-1]))
-        self.training_samples = train
+        self.samples = train[:-1] + dev[:-1] + test[:-1]
+        self.samples = sum(self.samples, [])  # concatenate
+        self.training_samples = sum(train[:-1], [])  # concatenate
 
     def loadFiles(self, taskpath, data_type: str):
         raise NotImplementedError("You need to implement a loading method that outputs the tuple with the format\
@@ -112,7 +114,7 @@ class Classifier_task(object):
 
     def train(self, params):
         start_time = time()
-        training_history = {'time': [], 'train_loss': [], 'train_acc': [], 'valid_loss': [], 'valid_acc': []}
+        training_history = {'time': [], 'train_loss': [], 'train_score': [], 'valid_loss': [], 'valid_score': []}
         best_valid = 0
         start_epoch = 0
         # to make sure we reload with the proper updated learning rate
