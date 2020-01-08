@@ -30,6 +30,7 @@ from senteval.emocontext import EmoContext
 from senteval.hateval import HatEval
 from senteval.sentiment import SentimentAnalysis
 from senteval.permutation_detection import PermutationDetection
+from senteval.qqp import QQP
 
 
 class SE(object):

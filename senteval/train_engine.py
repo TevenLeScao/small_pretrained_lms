@@ -51,9 +51,10 @@ class TrainEngine(object):
             self.results = []
         if (isinstance(name, list)):
             for x in name:
-                self.results.append(self.train(x))
-            return self.results
-        assert name in self.list_tasks, str(name) + ' not in ' + str(self.list_tasks)
+                self.train(x)
+            return
+        else:
+            assert name in self.list_tasks, str(name) + ' not in ' + str(self.list_tasks)
 
         # Original SentEval tasks
         if name == 'SNLI':
@@ -154,3 +155,5 @@ class TrainEngine(object):
         self.trainer.do_train_prepare(self.params, self.prepare)
 
         self.results = self.trainer.train(self.params)
+
+        return self.results

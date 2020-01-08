@@ -105,7 +105,7 @@ class HatEval(Trainer):
 
         config = {'nclasses': self.nclasses, 'seed': self.seed,
                   'usepytorch': params.usepytorch,
-                  'cudaEfficient': True,
+                  'cudaEfficient': GPU,
                   'nhid': params.nhid, 'noreg': True}
 
         config_classifier = copy.deepcopy(params.classifier)

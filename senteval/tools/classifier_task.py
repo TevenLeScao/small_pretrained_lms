@@ -189,6 +189,7 @@ class Classifier_task(object):
         train_data = [(train_data[0][i], train_data[1][i]) for i in range(train_data[0].shape[0])]
         print("Training a classifier layer")
         for epoch in range(transconfig.epoch):
+            print("epoch {}".format(epoch))
             for embed, targets in batch_iter(train_data, transconfig.batch_size):
                 embed = torch.stack(embed)
                 targets = torch.LongTensor(targets)
@@ -207,7 +208,6 @@ class Classifier_task(object):
             test_embed, test_labels = test_embed.cuda(), test_labels.cuda()
 
         with torch.no_grad():
-            #TODO: Add some parameters specifying the evaluation type
             dev_scores = classifier(dev_embed)
             test_scores = classifier(test_embed)
             dev_loss = classifier.predictions_to_loss(dev_scores, dev_labels).item()

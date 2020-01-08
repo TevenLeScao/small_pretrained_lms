@@ -22,7 +22,7 @@ class ModelConfig:
         model = "bert"
         depth = 1
         width = 64
-        d_ff = 64
+        d_ff = 512
         n_head = 1
         sentence_width = 1024
         encoder_depth = 3
@@ -45,7 +45,7 @@ class TrainConfig:
     accumulate = 8
     min_lr = 0.00001
     if SANITY:
-        max_epoch = 10
+        max_epoch = 4
         resume_training = False
     else:
         max_epoch = 100

@@ -5,14 +5,14 @@ import numpy as np
 from senteval.tools.classifier_task import Classifier_task
 from utils.helpers import prepare_sentences, lines_to_word_lists
 
-class SentimentAnalysis(Classifier_task):
+class PermutationDetection(Classifier_task):
 
     def __init__(self, taskpath, seed=111):
         self.sorting_key = lambda z: len(z[0])
-        self.dict_label = {'neutral': 0, 'positive': 1, 'negative': 2}
+        self.dict_label = {'original': 0, 'altered': 1}
         self.classifier_input_multiplier = 1
-        self.task_name = "Sentiment Analysis"
-        super(SentimentAnalysis, self).__init__(taskpath, seed)
+        self.task_name = "Permutation detection"
+        super(PermutationDetection, self).__init__(taskpath, seed)
 
     def loadFiles(self, path: str, file_type: str):
         assert os.path.isdir(path), "Directory %s not found" % path
@@ -37,6 +37,6 @@ class SentimentAnalysis(Classifier_task):
             batch = sents[ii:ii + params.batch_size]
             s = batcher(params, batch)
             enc_input.append(torch.tensor(s))
-            if (ii // params.batch_size)%10 == 0 :
+            if ii % 200 == 0:
                 print("PROGRESS: %.2f%%" % (100 * ii / n_labels))
         return enc_input

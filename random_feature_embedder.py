@@ -80,7 +80,8 @@ def batcher(params, batch):
 base_params = {'base_path': paths.senteval_data_path, 'usepytorch': True, 'kfold': 5, "train_encoder":True}
 base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 64,
                              'tenacity': 3, 'epoch_size': 2}
-base_params.update({"semeval_path": paths.semeval_data_path, "others_path": paths.others_data_path})
+base_params.update({"semeval_path": paths.semeval_data_path, "others_path": paths.others_data_path,
+                    "glue_path": paths.glue_path})
 
 # Set up logger
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
@@ -89,6 +90,9 @@ if __name__ == "__main__":
 
     word_embedder = BertWordEmbedder()
     sentence_encoder = RandomLSTM()
+    num_params = sum(p.numel() for p in word_embedder.parameters()) +\
+                 sum(p.numel() for p in sentence_encoder.parameters())
+    print("Model built. Number of parameters: {0:.2f}m".format(num_params//10000/100))
     try:
         word_embedder.load_params(osp.join(paths.direct_reload_path, "embedder"))
         if not base_params.get("train_encoder"):
@@ -106,16 +110,16 @@ if __name__ == "__main__":
     base_params["word_embedder"] = word_embedder
     base_params["tokenize"] = tokenize
     training_tasks = ['Sentiment']
-    testing_tasks = ['Sentiment', 'EmoContext']
+    testing_tasks = ['Sentiment', 'EmoContext', 'Permutation']
 
     if training_tasks:
         te = senteval.train_engine.TrainEngine(base_params, train_prepare)
         train_results = te.train(training_tasks)
-        print("train results:")
+        print("train results on tasks {}:".format(training_tasks))
         print(train_results)
 
     if testing_tasks:
         ee = senteval.eval_engine.SE(base_params, batcher, eval_prepare)
         test_results = ee.eval(testing_tasks)
-        print("test_results:")
+        print("test_results on tasks {}:".format(testing_tasks))
         print(test_results)

@@ -51,9 +51,10 @@ def batcher(params, batch):
 
 
 # Set params for SentEval
-base_params = {'base_path': paths.semeval_data_path, 'usepytorch': True, 'kfold': 5, "train_encoder":True}
+base_params = {'base_path': paths.senteval_data_path, 'usepytorch': True, 'kfold': 5, "train_encoder":True}
 base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 64,
                              'tenacity': 3, 'epoch_size': 2}
+base_params.update({"semeval_path": paths.semeval_data_path, "others_path": paths.others_data_path})
 
 # Set up logger
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
@@ -80,7 +81,7 @@ if __name__ == "__main__":
         base_params["vocab"] = tokenizer.encoder
 
     ee = senteval.eval_engine.SE(base_params, batcher)
-    testing_tasks = ['EmoContext', 'HatEval']
+    testing_tasks = ['EmoContext', 'HatEval', 'Permutation']
 
     if testing_tasks:
         test_results = ee.eval(testing_tasks)
