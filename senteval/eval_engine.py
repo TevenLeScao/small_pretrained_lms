@@ -62,7 +62,7 @@ class SE(object):
                            'Length', 'WordContent', 'Depth', 'TopConstituents',
                            'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
                            'OddManOut', 'CoordinationInversion', 'EmoContext',
-                           'HatEval', 'Sentiment', 'Permutation']
+                           'HatEval', 'Sentiment', 'Permutation', 'QQP']
 
     def eval(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
@@ -122,6 +122,11 @@ class SE(object):
         elif name == 'HatEval':
             self.params.task_path = self.params.semeval_path + '/downstream/HatEval'
             self.evaluation = HatEval(self.params.task_path, seed=self.params.seed)
+
+        # Glue tasks
+        elif name == 'QQP':
+            self.params.task_path = self.params.glue_path + '/QQP'
+            self.evaluation = QQP(self.params.task_path, seed=self.params.seed)
 
         # Other tasks
         elif name == "Sentiment":

@@ -2,7 +2,7 @@ import torch
 
 SANITY = False
 GPU = torch.cuda.is_available()
-EXPERIMENT_NAME = "SNLI2EmoHateSNLI_2048" if not SANITY else "sanity"
+EXPERIMENT_NAME = "QQP" if not SANITY else "sanity"
 
 
 class VocabConfig:
