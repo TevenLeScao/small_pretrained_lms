@@ -61,6 +61,8 @@ class Classifier_task(object):
         self.samples = train[:-1] + dev[:-1] + test[:-1]
         self.samples = sum(self.samples, [])  # concatenate
         self.training_samples = sum(train[:-1], [])  # concatenate
+        if not hasattr(self, 'eval_metrics'):
+            self.eval_metrics = ['loss', 'acc']
 
     def loadFiles(self, taskpath, data_type: str):
         raise NotImplementedError("You need to implement a loading method that outputs the tuple with the format\
@@ -189,7 +191,7 @@ class Classifier_task(object):
         train_data = [(train_data[0][i], train_data[1][i]) for i in range(train_data[0].shape[0])]
         print("Training a classifier layer")
         for epoch in range(transconfig.epoch):
-            print("epoch {}".format(epoch))
+            progress_bar(epoch, transconfig.epoch)
             for embed, targets in batch_iter(train_data, transconfig.batch_size):
                 embed = torch.stack(embed)
                 targets = torch.LongTensor(targets)
@@ -207,18 +209,27 @@ class Classifier_task(object):
             dev_embed, dev_labels = dev_embed.cuda(), dev_labels.cuda()
             test_embed, test_labels = test_embed.cuda(), test_labels.cuda()
 
+        output = {}
         with torch.no_grad():
             dev_scores = classifier(dev_embed)
             test_scores = classifier(test_embed)
-            dev_loss = classifier.predictions_to_loss(dev_scores, dev_labels).item()
-            dev_acc = classifier.predictions_to_acc(dev_scores, dev_labels).item()
-            #dev_f1 = classifier.emocontext_f1(dev_scores, dev_labels, included_classes=(1, 2, 3))
-            test_loss = classifier.predictions_to_loss(test_scores, test_labels).item()
-            test_acc = classifier.predictions_to_acc(test_scores, test_labels).item()
-            # = classifier.emocontext_f1(test_scores, test_labels, included_classes=(1, 2, 3))
+            if "loss" in self.eval_metrics:
+                dev_loss = classifier.predictions_to_loss(dev_scores, dev_labels).item()
+                test_loss = classifier.predictions_to_loss(test_scores, test_labels).item()
+                output['devloss'] = dev_loss
+                output['loss'] = test_loss
+            if "acc" in self.eval_metrics:
+                dev_acc = classifier.predictions_to_acc(dev_scores, dev_labels).item()
+                test_acc = classifier.predictions_to_acc(test_scores, test_labels).item()
+                output['devacc'] = dev_acc
+                output['testacc'] = test_acc
+            if 'f1' in self.eval_metrics:
+                if not self.f1_excluded_classes:
+                    self.f1_excluded_classes = ()
+                dev_f1 = classifier.emocontext_f1(dev_scores, dev_labels, excluded_classes=self.f1_excluded_classes)
+                f1 = classifier.emocontext_f1(test_scores, test_labels, excluded_classes=self.f1_excluded_classes)
+                output['f1 eval classes excluded'] = self.f1_excluded_classes
+                output['devf1'] = dev_f1
+                output['f1'] = f1
 
-        return {'devacc': dev_acc, 'acc': test_acc,
-                'devloss': dev_loss, 'loss': test_loss,
-                #'devf1': dev_f1, 'f1': test_f1,
-                'ndev': len(self.data['dev'][0]),
-                'ntest': len(self.data['test'][0])}
+        return output

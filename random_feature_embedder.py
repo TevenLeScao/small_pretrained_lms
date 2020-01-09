@@ -15,6 +15,7 @@ from utils import subwords
 from models.sentence_encoders import SentenceEncoder, BOREP, RandomLSTM
 from models.word_embedders import BertWordEmbedder
 from models.structure import SimpleDataParallel
+import json
 
 import senteval
 
@@ -109,7 +110,7 @@ if __name__ == "__main__":
     base_params["sentence_encoder"] = sentence_encoder
     base_params["word_embedder"] = word_embedder
     base_params["tokenize"] = tokenize
-    training_tasks = ['Sentiment']
+    training_tasks = []
     testing_tasks = ['Sentiment', 'EmoContext', 'Permutation']
 
     if training_tasks:
@@ -122,4 +123,4 @@ if __name__ == "__main__":
         ee = senteval.eval_engine.SE(base_params, batcher, eval_prepare)
         test_results = ee.eval(testing_tasks)
         print("test_results on tasks {}:".format(testing_tasks))
-        print(test_results)
+        print(json.dumps(test_results, indent=4))

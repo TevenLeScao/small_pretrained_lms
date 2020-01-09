@@ -3,6 +3,7 @@ import os
 import torch
 from senteval.tools.classifier_task import Classifier_task
 from utils.helpers import lines_to_word_lists, prepare_sentences
+from utils.progress_bar import progress_bar
 
 class EmoContext(Classifier_task):
 
@@ -11,6 +12,8 @@ class EmoContext(Classifier_task):
         self.dict_label = {'others': 0, 'happy': 1, 'sad': 2, 'angry': 3}
         self.classifier_input_multiplier = 6
         self.task_name = "EmoContext"
+        self.eval_metrics = ['loss', 'acc', 'f1']
+        self.f1_excluded_classes = (0,)
         super(EmoContext, self).__init__(taskpath, seed)
 
     def loadFiles(self, path: str, file_type: str):
@@ -57,5 +60,6 @@ class EmoContext(Classifier_task):
                 enc3 = torch.tensor(batcher(params, batch3))
                 enc_input.append(torch.cat((enc1, enc2, enc3, enc1 * enc2, enc2 * enc3, enc3 * enc1), dim=1))
             if ii % 200 == 0:
-                print("PROGRESS: %.2f%%" % (100 * ii / n_labels))
+                progress_bar(ii, n_labels)
+        print("")
         return enc_input

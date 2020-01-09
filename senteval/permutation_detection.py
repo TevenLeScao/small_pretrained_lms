@@ -4,6 +4,7 @@ import numpy as np
 
 from senteval.tools.classifier_task import Classifier_task
 from utils.helpers import prepare_sentences, lines_to_word_lists
+from utils.progress_bar import progress_bar
 
 class PermutationDetection(Classifier_task):
 
@@ -38,5 +39,6 @@ class PermutationDetection(Classifier_task):
             s = batcher(params, batch)
             enc_input.append(torch.tensor(s))
             if ii % 200 == 0:
-                print("PROGRESS: %.2f%%" % (100 * ii / n_labels))
+                progress_bar(ii, n_labels)
+        print("")
         return enc_input

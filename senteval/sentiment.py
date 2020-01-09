@@ -4,6 +4,7 @@ import numpy as np
 
 from senteval.tools.classifier_task import Classifier_task
 from utils.helpers import prepare_sentences, lines_to_word_lists
+from utils.progress_bar import progress_bar
 
 class SentimentAnalysis(Classifier_task):
 
@@ -12,6 +13,8 @@ class SentimentAnalysis(Classifier_task):
         self.dict_label = {'neutral': 0, 'positive': 1, 'negative': 2}
         self.classifier_input_multiplier = 1
         self.task_name = "Sentiment Analysis"
+        self.eval_metrics = ['loss', 'acc', 'f1']
+        self.f1_excluded_classes = (0,)
         super(SentimentAnalysis, self).__init__(taskpath, seed)
 
     def loadFiles(self, path: str, file_type: str):
@@ -38,5 +41,6 @@ class SentimentAnalysis(Classifier_task):
             s = batcher(params, batch)
             enc_input.append(torch.tensor(s))
             if (ii // params.batch_size)%10 == 0 :
-                print("PROGRESS: %.2f%%" % (100 * ii / n_labels))
+                progress_bar(ii, n_labels)
+        print("")
         return enc_input
