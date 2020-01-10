@@ -13,7 +13,7 @@ class EmoContext(Classifier_task):
         self.classifier_input_multiplier = 6
         self.task_name = "EmoContext"
         self.eval_metrics = ['loss', 'acc', 'f1']
-        self.f1_excluded_classes = (0,)
+        self.f1_excluded_classes = ('others',)
         super(EmoContext, self).__init__(taskpath, seed)
 
     def loadFiles(self, path: str, file_type: str):

@@ -31,6 +31,7 @@ from senteval.hateval import HatEval
 from senteval.sentiment import SentimentAnalysis
 from senteval.permutation_detection import PermutationDetection
 from senteval.qqp import QQP
+from senteval.cola import CoLA
 
 
 class SE(object):
@@ -62,7 +63,7 @@ class SE(object):
                            'Length', 'WordContent', 'Depth', 'TopConstituents',
                            'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
                            'OddManOut', 'CoordinationInversion', 'EmoContext',
-                           'HatEval', 'Sentiment', 'Permutation', 'QQP']
+                           'HatEval', 'Sentiment', 'Permutation', 'QQP', 'CoLA']
 
     def eval(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
@@ -127,6 +128,9 @@ class SE(object):
         elif name == 'QQP':
             self.params.task_path = self.params.glue_path + '/QQP'
             self.evaluation = QQP(self.params.task_path, seed=self.params.seed)
+        elif name == 'CoLA':
+            self.params.task_path = self.params.glue_path + '/CoLA'
+            self.evaluation = CoLA(self.params.task_path, seed=self.params.seed)
 
         # Other tasks
         elif name == "Sentiment":

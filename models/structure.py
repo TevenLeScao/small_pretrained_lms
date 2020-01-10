@@ -3,6 +3,7 @@ from torch import nn
 from torch.nn.parallel.distributed import DistributedDataParallel
 from sklearn.metrics import f1_score
 from utils.helpers import get_optimizer
+from sklearn.metrics import matthews_corrcoef
 
 from configuration import GPU, TrainConfig as tconfig
 
@@ -127,6 +128,12 @@ class StandardMLP(GeneralModel):
             return float(2 * precision * recall / (precision + recall))
         except ZeroDivisionError:
             return 0
+
+    def predictions_to_mcc(self, predictions, target):
+        target = target.numpy()
+        assert len(set(target)) == 2
+        predictions = predictions.max(dim=1)[1]
+        return matthews_corrcoef(target, predictions)
 
     def main_module(self):
         return self.mlp

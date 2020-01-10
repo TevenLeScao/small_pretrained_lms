@@ -1,20 +1,21 @@
 import os
 import torch
-import csv
+import numpy as np
 
 from senteval.tools.classifier_task import Classifier_task
 from utils.helpers import prepare_sentences, lines_to_word_lists
 from utils.progress_bar import progress_bar
 
-class QQP(Classifier_task):
+
+class CoLA(Classifier_task):
 
     def __init__(self, taskpath, seed=111):
-        self.sorting_key = lambda z: len(z[0])+len(z[1])
+        self.sorting_key = lambda z: len(z[0])
         self.dict_label = {'0': 0, '1': 1}
         self.classifier_input_multiplier = 1
-        self.task_name = "Sentiment Analysis"
-        self.eval_metrics = ['acc', 'f1']
-        super(QQP, self).__init__(taskpath, seed)
+        self.task_name = "Linguistic acceptability"
+        self.eval_metrics = ['acc', 'mcc']
+        super(CoLA, self).__init__(taskpath, seed)
 
     def loadFiles(self, path: str, file_type: str):
         assert os.path.isdir(path), "Directory %s not found" % path
@@ -26,21 +27,20 @@ class QQP(Classifier_task):
                   "For simplicity, we will only use the dev set again")
             print("***************************************************************************************************")
             file_type = "dev"
-        s1, s2, labels = [], [], []
+        sents, labels = [], []
         with open(os.path.join(path, file_type+".tsv")) as infile:
             next(infile)
             bad_rows = 0
             for row in infile:
                 row = row.strip()
                 try:
-                    s1_now, s2_now, label_now = row.split('\t')[3:]
-                    s1.append(s1_now.split())
-                    s2.append(s2_now.split())
+                    label_now, _, sent_now = row.split('\t')[1:]
+                    sents.append(sent_now.split())
                     labels.append(label_now)
                 except:
                     bad_rows += 1
         print("%s bad rows"%bad_rows)
-        return s1, s2, labels
+        return sents, labels
 
     def batch_data_to_sent_embeddings(self, models, batch_features, params):
         word_embedder, sentence_encoder, _ = models
@@ -56,7 +56,7 @@ class QQP(Classifier_task):
             batch = sents[ii:ii + params.batch_size]
             s = batcher(params, batch)
             enc_input.append(torch.tensor(s))
-            if (ii // params.batch_size)%10 == 0 :
+            if ii % 200 == 0:
                 progress_bar(ii, n_labels)
         print("")
         return enc_input

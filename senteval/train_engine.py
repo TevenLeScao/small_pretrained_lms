@@ -5,6 +5,7 @@ from senteval.hateval import HatEval
 from senteval.sentiment import SentimentAnalysis
 from senteval.permutation_detection import PermutationDetection
 from senteval.qqp import QQP
+from senteval.cola import CoLA
 from senteval.trec import TRECEval
 from senteval.sick import SICKRelatednessEval, SICKEntailmentEval
 from senteval.mrpc import MRPCEval
@@ -45,7 +46,7 @@ class TrainEngine(object):
                            'Length', 'WordContent', 'Depth', 'TopConstituents',
                            'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
                            'OddManOut', 'CoordinationInversion', 'EmoContext', 'HatEval', 'Sentiment', 'Permutation',
-                           'QQP']
+                           'QQP', 'CoLA']
 
     def train(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
@@ -78,6 +79,10 @@ class TrainEngine(object):
         if name == "QQP":
             self.params.task_path = self.params.glue_path + '/{}'.format(name)
             self.trainer = QQP(self.params.task_path, seed=self.params.seed)
+
+        if name == "CoLA":
+            self.params.task_path = self.params.glue_path + '/{}'.format(name)
+            self.trainer = CoLA(self.params.task_path, seed=self.params.seed)
         # TODO: convert other tasks
         # if name == 'CR':
         #     self.params.task_path = self.params.base_path + '/downstream/{}'.format(name)

@@ -224,12 +224,19 @@ class Classifier_task(object):
                 output['devacc'] = dev_acc
                 output['testacc'] = test_acc
             if 'f1' in self.eval_metrics:
-                if not self.f1_excluded_classes:
+                if not hasattr(self, 'f1_excluded_classes'):
                     self.f1_excluded_classes = ()
-                dev_f1 = classifier.emocontext_f1(dev_scores, dev_labels, excluded_classes=self.f1_excluded_classes)
-                f1 = classifier.emocontext_f1(test_scores, test_labels, excluded_classes=self.f1_excluded_classes)
-                output['f1 eval classes excluded'] = self.f1_excluded_classes
+                excluded_classes_index = (self.dict_label[lab] for lab in self.f1_excluded_classes)
+                dev_f1 = classifier.emocontext_f1(dev_scores, dev_labels, excluded_classes=excluded_classes_index)
+                f1 = classifier.emocontext_f1(test_scores, test_labels, excluded_classes=excluded_classes_index)
+                output['f1 eval classes excluded'] = \
+                    'None' if self.f1_excluded_classes == () else str(self.f1_excluded_classes)
                 output['devf1'] = dev_f1
                 output['f1'] = f1
+            if 'mcc' in self.eval_metrics:
+                dev_mcc = classifier.predictions_to_mcc(dev_scores, dev_labels)
+                mcc = classifier.predictions_to_mcc(test_scores, test_labels)
+                output['devmcc'] = dev_mcc
+                output['mcc'] = mcc
 
         return output
