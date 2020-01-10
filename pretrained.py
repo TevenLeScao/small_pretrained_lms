@@ -81,7 +81,7 @@ if __name__ == "__main__":
         base_params["vocab"] = tokenizer.encoder
 
     ee = senteval.eval_engine.SE(base_params, batcher)
-    testing_tasks = ['EmoContext', 'HatEval', 'Permutation']
+    testing_tasks = ['EmoContext', 'HatEval']
 
     if testing_tasks:
         test_results = ee.eval(testing_tasks)

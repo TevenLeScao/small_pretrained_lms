@@ -39,6 +39,8 @@ class SNLI(object):
     def __init__(self, taskpath, seed=1111):
         logging.debug('***** Transfer task : SNLI Entailment*****\n\n')
         self.seed = seed
+        self.n_classes = 3
+        self.dico_label = {'entailment': 0, 'neutral': 1, 'contradiction': 2}
 
         train1 = self.loadFile(os.path.join(taskpath, 's1.train'))
         train2 = self.loadFile(os.path.join(taskpath, 's2.train'))
@@ -76,13 +78,10 @@ class SNLI(object):
 
         self.training_samples = train1 + train2
         self.samples = train1 + train2 + valid1 + valid2 + test1 + test2
-        self.data = {'train': (train1, train2, trainlabels),
-                     'valid': (valid1, valid2, validlabels),
-                     'test': (test1, test2, testlabels)
+        self.data = {'train': (train1, train2, [self.dico_label[value] for value in trainlabels]),
+                     'valid': (valid1, valid2, [self.dico_label[value] for value in validlabels]),
+                     'test': (test1, test2, [self.dico_label[value] for value in testlabels])
                      }
-        self.n_classes = 3
-
-        self.dico_label = {'entailment': 0, 'neutral': 1, 'contradiction': 2}
 
     def do_prepare(self, params, prepare):
         return prepare(params, self.samples)
@@ -160,12 +159,12 @@ class SNLI(object):
             except FileNotFoundError:
                 print("Could not find models to load")
 
-        self.data['train'] = (params.tokenize(params, self.data['train'][0]),
-                              params.tokenize(params, self.data['train'][1]),
-                              [self.dico_label[value] for value in self.data['train'][2]])
-        self.data['valid'] = (params.tokenize(params, self.data['valid'][0]),
-                              params.tokenize(params, self.data['valid'][1]),
-                              [self.dico_label[value] for value in self.data['valid'][2]])
+        # self.data['train'] = (params.tokenize(params, self.data['train'][0]),
+        #                       params.tokenize(params, self.data['train'][1]),
+        #                       [self.dico_label[value] for value in self.data['train'][2]])
+        # self.data['valid'] = (params.tokenize(params, self.data['valid'][0]),
+        #                       params.tokenize(params, self.data['valid'][1]),
+        #                       [self.dico_label[value] for value in self.data['valid'][2]])
 
         for epoch in range(start_epoch, tconfig.max_epoch):
             print("epoch {}".format(epoch))
@@ -223,7 +222,7 @@ class SNLI(object):
                         self.X[key] = np.vstack(enc_input)
                     enc_input = []
             self.X[key] = np.vstack((self.X[key], *enc_input))
-            self.y[key] = np.array([self.dico_label[y] for y in mylabels])
+            self.y[key] = np.array(mylabels)
 
         config = {'nclasses': 3, 'seed': self.seed,
                   'usepytorch': params.usepytorch,

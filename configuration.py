@@ -1,6 +1,6 @@
 import torch
 
-SANITY = False
+SANITY = True
 GPU = torch.cuda.is_available()
 EXPERIMENT_NAME = "QQP" if not SANITY else "sanity"
 

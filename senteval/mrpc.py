@@ -24,6 +24,7 @@ class MRPCEval(object):
     def __init__(self, task_path, seed=1111):
         logging.info('***** Transfer task : MRPC *****\n\n')
         self.seed = seed
+        self.ninputs = 2
         train = self.loadFile(os.path.join(task_path,
                               'msr_paraphrase_train.txt'))
         test = self.loadFile(os.path.join(task_path,

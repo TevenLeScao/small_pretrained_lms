@@ -26,6 +26,7 @@ class SSTEval(object):
         # binary of fine-grained
         assert nclasses in [2, 5]
         self.nclasses = nclasses
+        self.ninputs = 1
         self.task_name = 'Binary' if self.nclasses == 2 else 'Fine-Grained'
         logging.debug('***** Transfer task : SST %s classification *****\n\n', self.task_name)
 
