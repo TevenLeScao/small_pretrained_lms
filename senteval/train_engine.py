@@ -46,8 +46,8 @@ class TrainEngine(object):
     def train(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
         if (isinstance(name, list)):
-            for x in name:
-                self.train(x)
+            self.results = {x: self.train(x) for x in name}
+            return self.results
         assert name in self.list_tasks, str(name) + ' not in ' + str(self.list_tasks)
 
         # Original SentEval tasks
@@ -141,4 +141,4 @@ class TrainEngine(object):
         makedirs(self.params.current_xp_folder)
         self.trainer.do_train_prepare(self.params, self.prepare)
 
-        self.results = self.trainer.train(self.params)
+        return self.trainer.train(self.params)
