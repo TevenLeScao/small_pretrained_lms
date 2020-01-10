@@ -50,7 +50,7 @@ class PyTorchClassifier(object):
             trainX, trainy = X[trainidx], y[trainidx]
             devX, devy = X[devidx], y[devidx]
 
-        device = torch.device('cpu') if self.cudaEfficient else torch.device('cuda')
+        device = torch.device('cpu') if not self.cudaEfficient else torch.device('cuda')
 
         trainX = torch.from_numpy(trainX).to(device, dtype=torch.float32)
         trainy = torch.from_numpy(trainy).to(device, dtype=torch.int64)
@@ -113,9 +113,12 @@ class PyTorchClassifier(object):
     def score(self, devX, devy, excluded_classes=None):
         self.model.eval()
         preds = []
-        if not isinstance(devX, torch.cuda.FloatTensor) or self.cudaEfficient:
+        if not isinstance(devX, torch.cuda.FloatTensor) and self.cudaEfficient:
             devX = torch.FloatTensor(devX).cuda()
             devy = torch.LongTensor(devy).cuda()
+        elif not isinstance(devX, torch.FloatTensor):
+            devX = torch.FloatTensor(devX)
+            devy = torch.FloatTensor(devy)
         with torch.no_grad():
             for i in range(0, len(devX), self.batch_size):
                 Xbatch = devX[i:i + self.batch_size]
