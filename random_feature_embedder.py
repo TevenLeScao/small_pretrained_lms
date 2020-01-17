@@ -81,6 +81,7 @@ def batcher(params, batch):
 base_params = {'base_path': paths.senteval_data_path, 'usepytorch': True, 'kfold': 5, "train_encoder":True}
 base_params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 64,
                              'tenacity': 3, 'epoch_size': 2}
+base_params['seed'] = 50
 base_params.update({"semeval_path": paths.semeval_data_path, "others_path": paths.others_data_path,
                     "glue_path": paths.glue_path})
 
@@ -110,8 +111,8 @@ if __name__ == "__main__":
     base_params["sentence_encoder"] = sentence_encoder
     base_params["word_embedder"] = word_embedder
     base_params["tokenize"] = tokenize
-    training_tasks = ['CoLA']
-    testing_tasks = ['CoLA', 'QQP', 'HatEval', 'EmoContext']
+    training_tasks = ['QQP']
+    testing_tasks = ['QQP', 'HatEval']
 
     if training_tasks:
         te = senteval.train_engine.TrainEngine(base_params, train_prepare)

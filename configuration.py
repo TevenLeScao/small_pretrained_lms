@@ -42,7 +42,7 @@ class TrainConfig:
     batch_size = 64
     clip_grad = 5.0
     lr_decay = 0.6
-    accumulate = 8
+    accumulate = 1
     min_lr = 0.00001
     if SANITY:
         max_epoch = 4
@@ -53,8 +53,8 @@ class TrainConfig:
 
 
 class TransferConfig:
-    lr = 0.001
+    lr = 0.01
     weight_decay = 0.00001
-    batch_size = 64
-    epoch = 10
+    batch_size = 4
+    epoch = 1000
     optim = "adam,lr=%f,weight_decay=%f" % (lr, weight_decay)

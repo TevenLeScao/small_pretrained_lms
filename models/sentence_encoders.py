@@ -44,7 +44,7 @@ class RandomLSTM(SentenceEncoder):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=tconfig.lr, weight_decay=tconfig.weight_decay)
 
     def forward(self, embedded_words: torch.Tensor, sent_mask: torch.Tensor) -> torch.Tensor:
-        lengths = (-sent_mask + 1).sum(dim=1, keepdim=False)
+        lengths = sent_mask.sum(dim=1, keepdim=False)
         packed_sequence = nn.utils.rnn.pack_padded_sequence(embedded_words, lengths,
                                                             batch_first=True, enforce_sorted=False)
         self.projection.flatten_parameters()
@@ -52,7 +52,7 @@ class RandomLSTM(SentenceEncoder):
         unpacked_sequence, lengths = nn.utils.rnn.pad_packed_sequence(projected_sequence, batch_first=True,
                                                                       total_length=sent_mask.shape[1])
         sent_mask = sent_mask.unsqueeze(2).expand(*sent_mask.shape, self.sentence_dim)
-        unpacked_sequence = unpacked_sequence - sent_mask * 1e9
+        unpacked_sequence = unpacked_sequence - (1-sent_mask) * 1e9
         return unpacked_sequence.max(dim=1, keepdim=False)[0]
 
     def redraw(self):
