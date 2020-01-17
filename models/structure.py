@@ -3,7 +3,7 @@ from torch import nn
 from torch.nn.parallel.distributed import DistributedDataParallel
 from sklearn.metrics import f1_score
 from utils.helpers import get_optimizer
-from sklearn.metrics import matthews_corrcoef
+from sklearn.metrics import matthews_corrcoef, confusion_matrix
 
 from configuration import GPU, TrainConfig as tconfig
 
@@ -116,6 +116,13 @@ class StandardMLP(GeneralModel):
         predictions = predictions.max(dim=1)[1]
         return (predictions == target).sum().double() / target.shape[0]
 
+    def predictions_to_f1(self, predictions, target):
+        target = target.cpu().numpy()
+        assert len(set(target)) == 2
+        predictions = predictions.cpu().max(dim=1)[1]
+        return f1_score(target, predictions)
+
+
     def emocontext_f1(self, predictions, target, excluded_classes=(0,)):
         predictions = predictions.max(dim=1)[1]
         included_classes = set(range(self.nclasses)) - set(excluded_classes)
@@ -130,10 +137,15 @@ class StandardMLP(GeneralModel):
             return 0
 
     def predictions_to_mcc(self, predictions, target):
-        target = target.numpy()
+        target = target.cpu().numpy()
         assert len(set(target)) == 2
-        predictions = predictions.max(dim=1)[1]
+        predictions = predictions.cpu().max(dim=1)[1]
         return matthews_corrcoef(target, predictions)
+
+    def predictions_to_confusion_matrix(self, predictions, target):
+        target = target.cpu().numpy()
+        predictions = predictions.cpu().max(dim=1)[1]
+        return str(confusion_matrix(target, predictions).tolist())
 
     def main_module(self):
         return self.mlp

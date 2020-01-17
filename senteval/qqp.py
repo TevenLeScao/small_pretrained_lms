@@ -13,7 +13,7 @@ class QQP(Classifier_task):
         self.dict_label = {'0': 0, '1': 1}
         self.classifier_input_multiplier = 1
         self.task_name = "Sentiment Analysis"
-        self.eval_metrics = ['acc', 'f1']
+        self.eval_metrics = ['acc', 'f1', 'conf']
         super(QQP, self).__init__(taskpath, seed)
 
     def loadFiles(self, path: str, file_type: str):
@@ -21,7 +21,7 @@ class QQP(Classifier_task):
         assert file_type in ["train", "dev", "test"], "File type must be 'train', 'dev' or 'test'"
         if file_type == "test":
             print("***************************************************************************************************")
-            print("WARNING: This is not the official testing set, since the official labels are not publicly available."
+            print("WARNING: QQP does not use the official testing set, since the official labels are not publicly available."
                   "This does not correspond to the official benchmarks."
                   "For simplicity, we will only use the dev set again")
             print("***************************************************************************************************")

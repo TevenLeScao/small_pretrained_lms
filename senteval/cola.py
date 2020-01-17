@@ -14,7 +14,7 @@ class CoLA(Classifier_task):
         self.dict_label = {'0': 0, '1': 1}
         self.classifier_input_multiplier = 1
         self.task_name = "Linguistic acceptability"
-        self.eval_metrics = ['acc', 'mcc']
+        self.eval_metrics = ['acc', 'mcc', 'conf']
         super(CoLA, self).__init__(taskpath, seed)
 
     def loadFiles(self, path: str, file_type: str):

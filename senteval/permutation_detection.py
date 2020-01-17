@@ -38,7 +38,7 @@ class PermutationDetection(Classifier_task):
             batch = sents[ii:ii + params.batch_size]
             s = batcher(params, batch)
             enc_input.append(torch.tensor(s))
-            if ii % 200 == 0:
+            if ii % 20000 == 0:
                 progress_bar(ii, n_labels)
         print("")
         return enc_input

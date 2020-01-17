@@ -226,11 +226,14 @@ class Classifier_task(object):
             if 'f1' in self.eval_metrics:
                 if not hasattr(self, 'f1_excluded_classes'):
                     self.f1_excluded_classes = ()
-                excluded_classes_index = (self.dict_label[lab] for lab in self.f1_excluded_classes)
-                dev_f1 = classifier.emocontext_f1(dev_scores, dev_labels, excluded_classes=excluded_classes_index)
-                f1 = classifier.emocontext_f1(test_scores, test_labels, excluded_classes=excluded_classes_index)
-                output['f1 eval classes excluded'] = \
-                    'None' if self.f1_excluded_classes == () else str(self.f1_excluded_classes)
+                if self.f1_excluded_classes == ():
+                    dev_f1 = classifier.predictions_to_f1(dev_scores, dev_labels)
+                    f1 = classifier.predictions_to_f1(dev_scores, dev_labels)
+                else:
+                    excluded_classes_index = (self.dict_label[lab] for lab in self.f1_excluded_classes)
+                    dev_f1 = classifier.emocontext_f1(dev_scores, dev_labels, excluded_classes=excluded_classes_index)
+                    f1 = classifier.emocontext_f1(test_scores, test_labels, excluded_classes=excluded_classes_index)
+                    output['f1 eval classes excluded'] = str(self.f1_excluded_classes)
                 output['devf1'] = dev_f1
                 output['f1'] = f1
             if 'mcc' in self.eval_metrics:
@@ -238,5 +241,10 @@ class Classifier_task(object):
                 mcc = classifier.predictions_to_mcc(test_scores, test_labels)
                 output['devmcc'] = dev_mcc
                 output['mcc'] = mcc
+            if 'conf' in self.eval_metrics:
+                dev_conf = classifier.predictions_to_confusion_matrix(dev_scores, dev_labels)
+                conf = classifier.predictions_to_confusion_matrix(dev_scores, dev_labels)
+                output['devconf'] = dev_conf
+                output['conf'] = conf
 
         return output
