@@ -145,8 +145,6 @@ class Classifier_task(object):
                             for list_of_word_lists in self.data[data_type][:-1]]
                 label_list = [self.dict_label[value] for value in self.data[data_type][-1]]
                 self.data_subwords[data_type] = list(zip(zip(*sub_list), label_list))
-            print(len(self.data_subwords['train'][0]))
-            print(len(self.data['dev'][0]))
 
         for epoch in range(start_epoch, tconfig.max_epoch):
             print("epoch {}".format(epoch))
@@ -228,7 +226,7 @@ class Classifier_task(object):
                     self.f1_excluded_classes = ()
                 if self.f1_excluded_classes == ():
                     dev_f1 = classifier.predictions_to_f1(dev_scores, dev_labels)
-                    f1 = classifier.predictions_to_f1(dev_scores, dev_labels)
+                    f1 = classifier.predictions_to_f1(test_scores, test_labels)
                 else:
                     excluded_classes_index = (self.dict_label[lab] for lab in self.f1_excluded_classes)
                     dev_f1 = classifier.emocontext_f1(dev_scores, dev_labels, excluded_classes=excluded_classes_index)
@@ -243,7 +241,7 @@ class Classifier_task(object):
                 output['mcc'] = mcc
             if 'conf' in self.eval_metrics:
                 dev_conf = classifier.predictions_to_confusion_matrix(dev_scores, dev_labels)
-                conf = classifier.predictions_to_confusion_matrix(dev_scores, dev_labels)
+                conf = classifier.predictions_to_confusion_matrix(test_scores, test_labels)
                 output['devconf'] = dev_conf
                 output['conf'] = conf
 
